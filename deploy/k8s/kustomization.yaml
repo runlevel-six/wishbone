@@ -12,4 +12,9 @@ resources:
   - service-ingress.yaml
   - networkpolicy.yaml
   # secret.example.yaml is documentation, not a resource. Supply the real
-  # Secret (or SealedSecret) out of band.
+  # Secret out of band.
+
+# Uncomment once the extraction sidecar image is built and pushed. See
+# extractor-sidecar.yaml and docs/how-to/enable-link-lookup.md.
+# patches:
+#   - path: extractor-sidecar.yaml

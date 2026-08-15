@@ -47,7 +47,7 @@ winning tier for each field is recorded in `items.field_sources`.
 | 2 | JSON-LD | any page with `application/ld+json` | `name`, `description`, `image`, `offers.price`, `offers.priceCurrency`, `brand`, `sku`, `color`, `size` |
 | 3 | Microdata | head-level `itemprop` metas | same shape as JSON-LD |
 | 4 | OpenGraph | any page | `og:title`, `og:description`, `og:image:secure_url` (preferred over `og:image`), `product:price:*`, `og:type` |
-| 5 | Sidecar | any page, only when configured | whatever the sidecar returns |
+| 5 | Sidecar | any page, only when configured | title, a free-text price, an image — per-site handling for marketplaces |
 | 6 | Manual | always | whatever the person types |
 
 Notes:
@@ -122,7 +122,9 @@ fails the tier, and a failed tier degrades to the manual path. The client
 applies `EXTRACTOR_SIDECAR_TIMEOUT` and does not retry.
 
 The sidecar must bind loopback only. Reference implementation and rationale:
-[`deploy/sidecar/`](../../deploy/sidecar).
+[`deploy/sidecar/`](../../deploy/sidecar). It wraps `get-product-name` (MIT),
+whose own output is `{ name, price, image }` with the price as free text; the
+shim passes that through and the Go side parses what it can.
 
 ## Testing extraction
 

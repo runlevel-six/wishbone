@@ -27,7 +27,12 @@ large marketplaces poorly. Details in
 ## Add the sidecar
 
 The sidecar is a second container in the same pod, listening on loopback only,
-that runs a Node library specialising in sites the metadata tiers fail on.
+running [`get-product-name`](https://www.npmjs.com/package/get-product-name)
+(MIT) — a library with per-site handling for the marketplaces the metadata
+tiers cannot read.
+
+It is opt-in: the default manifests do not include it, because it needs a
+second image built and pushed first.
 
 1. Build it:
 
@@ -37,26 +42,20 @@ that runs a Node library specialising in sites the metadata tiers fail on.
    docker push your-registry/wishd-extractor:v1
    ```
 
-2. Set the image in `deployment.yaml`, keep the `extractor` container, and make
-   sure the app has:
+2. Set the image in `deploy/k8s/extractor-sidecar.yaml`, then uncomment the
+   `patches` entry in `kustomization.yaml`. That patch adds both the container
+   and `EXTRACTOR_SIDECAR_URL`.
 
-   ```yaml
-   - name: EXTRACTOR_SIDECAR_URL
-     value: http://127.0.0.1:8081
-   ```
-
-3. Apply, then check it answers:
+3. `kubectl apply -k deploy/k8s`, then check it answers:
 
    ```sh
    kubectl exec deploy/wishd -c extractor -- \
      wget -qO- 'http://127.0.0.1:8081/healthz'
    ```
 
-**Before you ship it, settle the license.** The library the wrapper depends on
-has not been license-verified; see [`NOTICE`](../../NOTICE) and
-[`deploy/sidecar/README.md`](../../deploy/sidecar/README.md). If it is
-copyleft, running it as a separate unmodified process is generally fine, but it
-has to be recorded.
+The library's license is MIT and is recorded in [`NOTICE`](../../NOTICE). Note
+that the npm package is `get-product-name` even though its repository is called
+`get-product-data`.
 
 ## Do not give the sidecar a Service
 

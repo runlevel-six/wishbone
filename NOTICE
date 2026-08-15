@@ -18,14 +18,18 @@ htmx 2.0.6 (internal/web/static/htmx.min.js)
 Separate processes (not linked, not distributed as part of this binary)
 --------------------------------------------------------------------------------
 
-get-product-data — used by the optional extraction sidecar
-  Status: LICENSE NOT YET VERIFIED. This is a tracked open item (plan §12) and
-  must be resolved before the sidecar image is built or deployed.
+get-product-name 1.19.0 — used by the optional extraction sidecar
+  https://github.com/Wingysam/get-product-data  (npm package: get-product-name)
+  MIT — Copyright 2020 Sam Wing. Verified against the package metadata and the
+  repository LICENSE file.
 
-  The parent project (Christmas Community) is AGPL-3.0. If the library is
-  AGPL-3.0 as well, running it as a separate, unmodified process invoked over
-  HTTP keeps it at arm's length from this Apache-2.0 codebase; that arrangement
-  should be recorded here once confirmed, along with the version in use.
+  Note the naming: the npm package is "get-product-name" while the repository
+  it is published from is named "get-product-data". They are the same library.
+
+  It runs as a separate process invoked over HTTP, is not linked into this
+  binary, and is not redistributed as part of it. The parent project it was
+  written for (Christmas Community) is AGPL-3.0, but the library itself is not,
+  so no copyleft obligation attaches to this Apache-2.0 codebase either way.
 
   The sidecar is optional. With EXTRACTOR_SIDECAR_URL unset, no part of it is
   used, built, or shipped.

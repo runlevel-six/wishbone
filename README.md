@@ -73,8 +73,8 @@ Not implemented yet:
   from a URL; nothing re-checks it on a schedule.
 - An optional local-LLM extraction tier.
 
-Open questions are tracked in [`NOTICE`](NOTICE) (one unresolved third-party
-license) and in the docs where they apply.
+The optional extraction sidecar is built and licensed
+([MIT](NOTICE)) but opt-in: the default manifests deploy without it.
 
 ## Development
 

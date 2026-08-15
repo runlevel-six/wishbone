@@ -54,14 +54,15 @@ Search for `REPLACE` and set:
 | `storage.yaml` | the block storage class name, volume sizes |
 | `service-ingress.yaml` | hostname, TLS issuer |
 | `networkpolicy.yaml` | your ingress controller's namespace, any extra private ranges |
+| `extractor-sidecar.yaml` | only if you are adding the optional sidecar |
 
 `WISHD_TRUSTED_PROXY_CIDRS` decides who may set `X-Forwarded-For`. Set it to
 the range your ingress pods run in. Leaving it empty is safe — the app then
 uses the socket address for rate limiting — but setting it too wide lets a
 client spoof its address past the login limiter.
 
-If you are not running the extraction sidecar, remove that container and the
-`EXTRACTOR_SIDECAR_URL` variable. See
+The extraction sidecar is not part of the default apply — it needs its own
+image. Everything deploys and works without it; add it later with
 [Enable link lookup](enable-link-lookup.md).
 
 ## 4. Apply

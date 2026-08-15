@@ -1,0 +1,44 @@
+# Optional extraction sidecar — a strategic-merge patch, not a standalone
+# resource.
+#
+# It is opt-in because it needs a second image built and pushed
+# (deploy/sidecar/wrapper). Everything else in this directory deploys a
+# complete, working app without it; extraction simply falls back to the
+# built-in metadata tiers and the manual form.
+#
+# To enable: build and push the image, set it below, and uncomment the
+# `patches` entry in kustomization.yaml.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wishd
+spec:
+  template:
+    spec:
+      containers:
+        - name: wishd
+          env:
+            - name: EXTRACTOR_SIDECAR_URL
+              value: http://127.0.0.1:8081
+
+        # Listens on loopback only, on purpose: it has no authentication and
+        # will fetch any URL handed to it. Do not give it a Service.
+        - name: extractor
+          image: REPLACE/wishd-extractor:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HOST
+              value: "127.0.0.1"
+            - name: PORT
+              value: "8081"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]

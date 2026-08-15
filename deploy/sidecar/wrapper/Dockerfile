@@ -1,7 +1,5 @@
-# Extraction sidecar.
-#
-# Verify the license of get-product-data before shipping this image and record
-# it in the repository NOTICE file (plan §12).
+# Extraction sidecar: a thin HTTP shim over get-product-name (MIT), recorded in
+# the repository NOTICE file.
 FROM node:22-alpine
 
 WORKDIR /app

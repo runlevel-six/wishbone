@@ -70,10 +70,9 @@ spec:
                   name: wishd
                   key: bootstrap-admin-password
                   optional: true
-            # Comment this out to run without the extraction sidecar; the app
-            # is fully functional without it (plan §5.5).
-            - name: EXTRACTOR_SIDECAR_URL
-              value: http://127.0.0.1:8081
+            # The extraction sidecar is opt-in: apply
+            # extractor-sidecar.yaml as a patch to add both the container and
+            # this variable. The app is fully functional without it.
           volumeMounts:
             - name: data
               mountPath: /data
@@ -105,28 +104,7 @@ spec:
             capabilities:
               drop: ["ALL"]
 
-        # Extraction sidecar (plan §5.5). Listens on localhost only; the app
-        # treats it as untrusted and degrades to the manual path if it fails.
-        - name: extractor
-          image: REPLACE/wishd-extractor:latest
-          imagePullPolicy: IfNotPresent
-          args: ["--host", "127.0.0.1", "--port", "8081"]
-          env:
-            - name: PORT
-              value: "8081"
-          resources:
-            requests:
-              cpu: 50m
-              memory: 128Mi
-            limits:
-              memory: 512Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-
-        # Backup sidecar (plan §10). VACUUM INTO is safe against a live
+        # Backup sidecar. VACUUM INTO is safe against a live
         # writer; `cp` of a WAL-mode database is not.
         - name: backup
           image: alpine:3.21
