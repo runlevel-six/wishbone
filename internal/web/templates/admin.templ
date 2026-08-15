@@ -1,0 +1,103 @@
+package templates
+
+templ Admin(p Page, d AdminData) {
+	@Layout(p) {
+		<h1>Admin</h1>
+		if d.SecretWarn {
+			<div class="flash flash-warn">
+				WISHD_SECRET_KEY is unset, so a random key was generated at startup. Sign-in
+				forms submitted before a restart will need one retry. Set it in the deployment.
+			</div>
+		}
+		if d.ClaimDrift > 0 {
+			<div class="flash flash-error">
+				{ itoa(d.ClaimDrift) } item(s) have a claim count that disagrees with their claims.
+				This should never happen — see /admin/health.
+			</div>
+		}
+		<section class="card">
+			<h2>Invites</h2>
+			<p class="hint">Registration is invite only. Generate a link and send it however you like — Wishbone does not send email.</p>
+			if d.InviteLink != "" {
+				<div class="flash flash-ok">
+					<label>
+						New invite link
+						<input type="text" value={ d.InviteLink } readonly data-select-on-focus class="grow"/>
+					</label>
+				</div>
+			}
+			<form method="post" action="/admin/invites">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<button class="button primary" type="submit">Create invite link</button>
+			</form>
+			<table class="table">
+				<thead><tr><th>Created</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+				<tbody>
+					for _, inv := range d.Invites {
+						<tr>
+							<td>{ friendlyDate(inv.CreatedAt) }</td>
+							<td>{ friendlyDate(inv.ExpiresAt) }</td>
+							<td>
+								if inv.Used {
+									used by { inv.UsedBy }
+								} else {
+									unused
+								}
+							</td>
+							<td>
+								if !inv.Used {
+									<form method="post" action={ "/admin/invites/" + inv.TokenHash + "/delete" } class="inline">
+										<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+										<button class="button small danger" type="submit">Revoke</button>
+									</form>
+								}
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</section>
+		<section class="card">
+			<h2>People</h2>
+			<table class="table">
+				<thead><tr><th>Name</th><th>Username</th><th>Joined</th><th>Admin</th></tr></thead>
+				<tbody>
+					for _, u := range d.Users {
+						<tr>
+							<td>{ u.DisplayName }</td>
+							<td>{ u.Username }</td>
+							<td>{ friendlyDate(u.CreatedAt) }</td>
+							<td>
+								<form method="post" action={ "/admin/users/" + u.ID + "/admin" } class="inline">
+									<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+									if u.IsAdmin {
+										<input type="hidden" name="admin" value="0"/>
+										<button class="button small" type="submit">Yes — revoke</button>
+									} else {
+										<input type="hidden" name="admin" value="1"/>
+										<button class="button small" type="submit">No — grant</button>
+									}
+								</form>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</section>
+		<section class="card">
+			<h2>Instance</h2>
+			<dl class="attrs">
+				<div><dt>People</dt><dd>{ itoa(d.Stats.Users) }</dd></div>
+				<div><dt>Lists</dt><dd>{ itoa(d.Stats.Lists) }</dd></div>
+				<div><dt>Items</dt><dd>{ itoa(d.Stats.Items) }</dd></div>
+				<div><dt>Pictures</dt><dd>{ itoa(d.Stats.Images) }</dd></div>
+				<div><dt>Link lookup</dt><dd>{ onOff(d.FetchEnabled) }</dd></div>
+				<div><dt>Extraction sidecar</dt><dd>{ onOff(d.SidecarOn) }</dd></div>
+			</dl>
+			<p class="hint">
+				Claim counts are deliberately absent from this page. Admin is not exempt from
+				owner-blindness: if you own a list, you are blind to it like everyone else.
+			</p>
+		</section>
+	}
+}

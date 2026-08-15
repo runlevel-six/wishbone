@@ -1,0 +1,17 @@
+# Machine-local tool settings
+/.claude/settings.local.json
+
+# Build output
+/bin/
+/tmp/
+coverage.out
+
+# Local data written by `make run`
+*.db
+*.db-wal
+*.db-shm
+
+# The implementation plan is a private handoff document: it describes the
+# hosting environment in detail and is not part of the published project.
+# Remove this line if you decide otherwise.
+/docs/plan.md

@@ -1,0 +1,39 @@
+# Storage.
+#
+# Two requirements, both non-negotiable:
+#
+#   * A block-mode storage class. SQLite locking over a network filesystem
+#     (NFS, CephFS, SMB, anything FUSE-backed) is a documented way to corrupt a
+#     database. Whatever class you name here must give the pod a real block
+#     device, not a shared filesystem.
+#
+#   * ReadWriteOnce, not ReadWriteOncePod. The backup sidecar mounts the same
+#     volume, and RWOP would forbid that.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wishd-data
+  labels:
+    app.kubernetes.io/name: wishd
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: REPLACE-BLOCK-STORAGE-CLASS
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Backups live on their own claim so a runaway backup loop fills the backup
+# volume rather than the one the application is writing to. The retention
+# prune in backup.sh is the primary defense; this is the second.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wishd-backup
+  labels:
+    app.kubernetes.io/name: wishd
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: REPLACE-BLOCK-STORAGE-CLASS
+  resources:
+    requests:
+      storage: 10Gi

@@ -1,0 +1,60 @@
+package templates
+
+templ Claims(p Page, rows []ClaimedRow) {
+	@Layout(p) {
+		<h1>Things you have claimed</h1>
+		if len(rows) == 0 {
+			<p class="muted">You have not claimed anything yet.</p>
+		}
+		<ul class="items">
+			for _, r := range rows {
+				<li class="card item">
+					<div class="item-main">
+						<h3 class="item-title">
+							if r.ItemURL != "" {
+								<a href={ templ.SafeURL(r.ItemURL) } rel="noreferrer noopener nofollow" target="_blank">{ r.ItemTitle }</a>
+							} else {
+								{ r.ItemTitle }
+							}
+						</h3>
+						<p class="meta">
+							<span class="muted">{ r.ListName } &middot; { r.OwnerName }</span>
+							if r.Qty > 1 {
+								<span class="muted">&times;{ itoa(r.Qty) }</span>
+							}
+							if r.State == "purchased" {
+								<span class="tag ok">bought</span>
+							} else {
+								<span class="tag">claimed</span>
+							}
+						</p>
+						if r.Removed {
+							<p class="flash flash-warn small">The owner has removed this item from their list.</p>
+						}
+						<form method="post" action={ "/claims/" + r.ClaimID + "/note" } class="row">
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							<input type="text" name="note" value={ r.Note } placeholder="Note for other claimers (the owner never sees this)" class="grow" maxlength="500"/>
+							<button class="button small" type="submit">Save note</button>
+						</form>
+					</div>
+					<div class="item-actions">
+						<form method="post" action={ "/claims/" + r.ClaimID + "/state" } class="inline">
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							if r.State == "purchased" {
+								<input type="hidden" name="state" value="claimed"/>
+								<button class="button small" type="submit">Mark not bought</button>
+							} else {
+								<input type="hidden" name="state" value="purchased"/>
+								<button class="button small" type="submit">Mark bought</button>
+							}
+						</form>
+						<form method="post" action={ "/claims/" + r.ClaimID + "/release" } class="inline">
+							<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+							<button class="button small danger" type="submit">Release</button>
+						</form>
+					</div>
+				</li>
+			}
+		</ul>
+	}
+}

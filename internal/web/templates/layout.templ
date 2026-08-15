@@ -1,0 +1,73 @@
+package templates
+
+templ Layout(p Page) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="referrer" content="no-referrer"/>
+			<title>
+				if p.Title != "" {
+					{ p.Title } &middot; { ProductName }
+				} else {
+					{ ProductName }
+				}
+			</title>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
+			<script src="/static/htmx.min.js" defer></script>
+			<script src="/static/app.js" defer></script>
+		</head>
+		<body hx-headers={ csrfHeader(p.CSRF) }>
+			if p.User != nil {
+				<header class="topbar">
+					<a class="brand" href="/">{ ProductName }</a>
+					<nav>
+						<a href="/" class={ navClass(p.Path, "/") }>Lists</a>
+						<a href="/claims" class={ navClass(p.Path, "/claims") }>Claimed</a>
+						<a href="/account" class={ navClass(p.Path, "/account") }>Account</a>
+						if p.IsAdmin() {
+							<a href="/admin" class={ navClass(p.Path, "/admin") }>Admin</a>
+						}
+					</nav>
+					<form method="post" action="/logout" class="inline">
+						<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+						<button class="link" type="submit">Sign out</button>
+					</form>
+				</header>
+			}
+			<main>
+				for _, f := range p.Flashes {
+					<div class={ "flash", "flash-" + f.Kind } role="status">{ f.Text }</div>
+				}
+				{ children... }
+			</main>
+			<footer class="foot">{ ProductName } &middot; family wishlists</footer>
+		</body>
+	</html>
+}
+
+// Bare is the chrome-free layout used by the sign-in and registration pages.
+templ Bare(p Page) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<meta name="referrer" content="no-referrer"/>
+			<title>{ p.Title } &middot; { ProductName }</title>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
+		</head>
+		<body class="centered">
+			<main class="card narrow">
+				<h1 class="brand-title">{ ProductName }</h1>
+				for _, f := range p.Flashes {
+					<div class={ "flash", "flash-" + f.Kind } role="status">{ f.Text }</div>
+				}
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

@@ -1,0 +1,79 @@
+# Egress policy for wishd.
+#
+# This is defense in depth, not the SSRF control. The real guard is the
+# connect-time address check in the dialer, which sees the resolved IP and so
+# survives DNS rebinding. This policy is the belt that catches a bug in the
+# braces: even if the guard were bypassed, the pod could not reach cluster
+# services or the node network.
+#
+# The excluded ranges below are the standard private ones. Add any additional
+# ranges your own network uses.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: wishd-egress
+  labels:
+    app.kubernetes.io/name: wishd
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wishd
+  policyTypes: ["Egress"]
+  egress:
+    # DNS to the cluster resolver, and nothing else inside the cluster.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # The public internet, with every private and special-purpose range carved
+    # out — including the cloud metadata address, which is the classic SSRF
+    # target even on a home cluster.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+              - 100.64.0.0/10
+              - 127.0.0.0/8
+              - 0.0.0.0/8
+              - 224.0.0.0/4
+              - 240.0.0.0/4
+      ports:
+        - protocol: TCP
+          port: 80
+        - protocol: TCP
+          port: 443
+---
+# Ingress: only the ingress controller may reach the app.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: wishd-ingress
+  labels:
+    app.kubernetes.io/name: wishd
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: wishd
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              # Namespace of your ingress controller.
+              kubernetes.io/metadata.name: REPLACE-INGRESS-NAMESPACE
+      ports:
+        - protocol: TCP
+          port: 8080

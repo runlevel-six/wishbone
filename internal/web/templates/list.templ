@@ -1,0 +1,273 @@
+package templates
+
+import "wishd/internal/view"
+
+templ ListView(p Page, d ListPageData) {
+	@Layout(p) {
+		<div class="page-head">
+			<div>
+				<h1>{ d.Page.List.Name }</h1>
+				if d.Page.IsOwner {
+					<p class="muted small">{ visibilityLabel(d.Page.List.Visibility) }</p>
+				} else {
+					<p class="muted small">{ d.Page.OwnerName }'s list</p>
+				}
+			</div>
+			if d.Page.IsOwner {
+				<div class="row">
+					<a class="button primary" href={ templ.SafeURL("/lists/" + d.Page.List.ID + "/items/new") }>Add item</a>
+					<button class="button" data-dialog-open="list-settings">Settings</button>
+				</div>
+			}
+		</div>
+		if d.Page.IsOwner {
+			@listSettings(p, d)
+			if len(d.Page.OwnerItems) == 0 {
+				<p class="muted">Nothing on this list yet.</p>
+			}
+			<ul class="items">
+				for _, it := range d.Page.OwnerItems {
+					@OwnerItemCard(p, it)
+				}
+			</ul>
+		} else {
+			if len(d.Page.ViewerItems) == 0 {
+				<p class="muted">This list is empty right now.</p>
+			}
+			<ul class="items">
+				for _, it := range d.Page.ViewerItems {
+					@ViewerItemCard(p, it)
+				}
+			</ul>
+		}
+	}
+}
+
+// OwnerItemCard renders an item for the person who owns the list.
+//
+// The type it takes, view.OwnerItemView, has no claim fields on it at all
+// (plan §3.2). This template could not display claim state if it tried.
+templ OwnerItemCard(p Page, it view.OwnerItemView) {
+	<li class="card item" id={ "item-" + it.ID }>
+		<div class="item-body">
+			if it.ImageSHA != "" {
+				<img class="thumb" src={ "/images/" + it.ImageSHA } alt="" loading="lazy"/>
+			}
+			<div class="item-main">
+				<h3 class="item-title">
+					if it.URL != "" {
+						<a href={ templ.SafeURL(it.URL) } rel="noreferrer noopener nofollow" target="_blank">{ it.Title }</a>
+					} else {
+						{ it.Title }
+					}
+				</h3>
+				<p class="meta">
+					if it.Price != "" {
+						<span class="price">{ it.Price }</span>
+					}
+					if it.Host != "" {
+						<span class="muted">{ it.Host }</span>
+					}
+					if it.Quantity > 1 {
+						<span class="muted">wants { itoa(it.Quantity) }</span>
+					}
+					if it.CategoryLabel != "" {
+						<span class="tag">{ it.CategoryLabel }</span>
+					}
+				</p>
+				if len(it.Attributes) > 0 {
+					<dl class="attrs">
+						for _, a := range it.Attributes {
+							<div><dt>{ a.Label }</dt><dd>{ a.Value }</dd></div>
+						}
+					</dl>
+				}
+				if it.Notes != "" {
+					<p class="notes">{ it.Notes }</p>
+				}
+				if linkStatusNote(it.LinkStatus) != "" {
+					<p class="flash flash-warn small">{ linkStatusNote(it.LinkStatus) }</p>
+				}
+			</div>
+		</div>
+		<div class="item-actions">
+			<a class="button small" href={ templ.SafeURL("/items/" + it.ID + "/edit") }>Edit</a>
+			<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<input type="hidden" name="dir" value="up"/>
+				<button class="button small" type="submit" title="Move up">&uarr;</button>
+			</form>
+			<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<input type="hidden" name="dir" value="down"/>
+				<button class="button small" type="submit" title="Move down">&darr;</button>
+			</form>
+			<form method="post" action={ "/items/" + it.ID + "/delete" } class="inline"
+				data-confirm="Remove this item from your list?">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<button class="button small danger" type="submit">Remove</button>
+			</form>
+		</div>
+	</li>
+}
+
+// ViewerItemCard renders an item for everyone except the owner.
+templ ViewerItemCard(p Page, it view.ViewerItemView) {
+	<li class={ "card", "item", templ.KV("removed", it.Removed) } id={ "item-" + it.ID }>
+		<div class="item-body">
+			if it.ImageSHA != "" {
+				<img class="thumb" src={ "/images/" + it.ImageSHA } alt="" loading="lazy"/>
+			}
+			<div class="item-main">
+				<h3 class="item-title">
+					if it.URL != "" && !it.Removed {
+						<a href={ templ.SafeURL(it.URL) } rel="noreferrer noopener nofollow" target="_blank">{ it.Title }</a>
+					} else {
+						{ it.Title }
+					}
+				</h3>
+				if it.Removed {
+					<p class="flash flash-warn small">
+						The list owner removed this item. If you already bought it, you may want to say something.
+					</p>
+				}
+				<p class="meta">
+					if it.Price != "" {
+						<span class="price">{ it.Price }</span>
+					}
+					if it.Host != "" {
+						<span class="muted">{ it.Host }</span>
+					}
+					if it.CategoryLabel != "" {
+						<span class="tag">{ it.CategoryLabel }</span>
+					}
+					if it.EditedAt != "" {
+						<span class="muted" title={ friendlyDate(it.EditedAt) }>edited by owner</span>
+					}
+				</p>
+				if len(it.Attributes) > 0 {
+					<dl class="attrs">
+						for _, a := range it.Attributes {
+							<div><dt>{ a.Label }</dt><dd>{ a.Value }</dd></div>
+						}
+					</dl>
+				}
+				if it.Notes != "" {
+					<p class="notes">{ it.Notes }</p>
+				}
+			</div>
+		</div>
+		if it.Notice != "" {
+			<p class="flash flash-warn small">{ it.Notice }</p>
+		}
+		if !it.Removed {
+			<div class="claimbar">
+				<span class="availability">
+					if it.Available > 0 {
+						{ availabilityLabel(it.Available, it.Quantity) }
+					} else {
+						Fully claimed
+					}
+				</span>
+				if it.Available > 0 {
+					<form class="inline" hx-post={ "/items/" + it.ID + "/claims" } hx-target={ "#item-" + it.ID } hx-swap="outerHTML">
+						if it.Quantity > 1 {
+							<label class="inline-label">
+								Qty
+								<input type="number" name="qty" value="1" min="1" max={ itoa(it.Available) } class="qty"/>
+							</label>
+						} else {
+							<input type="hidden" name="qty" value="1"/>
+						}
+						<button class="button primary small" type="submit">I&rsquo;ll get this</button>
+					</form>
+				}
+			</div>
+		}
+		if len(it.Claims) > 0 {
+			<ul class="claims">
+				for _, c := range it.Claims {
+					<li class="claim">
+						if c.IsMine {
+							<span class="you">You</span>
+						} else {
+							<span>{ c.ClaimerName }</span>
+						}
+						if c.Qty > 1 {
+							<span class="muted">&times;{ itoa(c.Qty) }</span>
+						}
+						if c.State == "purchased" {
+							<span class="tag ok">bought</span>
+						} else {
+							<span class="tag">claimed</span>
+						}
+						if c.Note != "" {
+							<span class="muted small">&ldquo;{ c.Note }&rdquo;</span>
+						}
+						if c.IsMine {
+							<span class="claim-actions">
+								if c.State == "purchased" {
+									@claimStateForm(p, it.ID, c.ID, "claimed", "Mark not bought")
+								} else {
+									@claimStateForm(p, it.ID, c.ID, "purchased", "Mark bought")
+								}
+								<form class="inline" hx-post={ "/claims/" + c.ID + "/release" } hx-target={ "#item-" + it.ID } hx-swap="outerHTML">
+									<button class="button small" type="submit">Release</button>
+								</form>
+							</span>
+						}
+					</li>
+				}
+			</ul>
+			<p class="muted small">The owner of this list cannot see any of this.</p>
+		}
+	</li>
+}
+
+templ claimStateForm(p Page, itemID, claimID, state, label string) {
+	<form class="inline" hx-post={ "/claims/" + claimID + "/state" } hx-target={ "#item-" + itemID } hx-swap="outerHTML">
+		<input type="hidden" name="state" value={ state }/>
+		<button class="button small" type="submit">{ label }</button>
+	</form>
+}
+
+templ listSettings(p Page, d ListPageData) {
+	<dialog id="list-settings" class="card">
+		<h2>List settings</h2>
+		<form method="post" action={ "/lists/" + d.Page.List.ID } class="stack">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				Name
+				<input type="text" name="name" value={ d.Page.List.Name } required maxlength="80"/>
+			</label>
+			<label>
+				Who can see it
+				<select name="visibility">
+					<option value="all_users" selected?={ d.Page.List.Visibility == "all_users" }>Everyone in the family</option>
+					<option value="selected" selected?={ d.Page.List.Visibility == "selected" }>Only people I pick</option>
+					<option value="private" selected?={ d.Page.List.Visibility == "private" }>Just me</option>
+				</select>
+			</label>
+			<fieldset class="shares">
+				<legend>People who can see it (when set to &ldquo;only people I pick&rdquo;)</legend>
+				for _, u := range d.AllUsers {
+					if u.ID != d.Page.List.OwnerID {
+						<label class="check">
+							<input type="checkbox" name="share" value={ u.ID } checked?={ d.SharedIDs[u.ID] }/>
+							{ u.DisplayName }
+						</label>
+					}
+				}
+			</fieldset>
+			<div class="row">
+				<button type="submit" class="primary">Save</button>
+				<button type="button" class="link" data-dialog-close>Cancel</button>
+			</div>
+		</form>
+		<form method="post" action={ "/lists/" + d.Page.List.ID + "/delete" } class="stack danger-zone"
+			data-confirm="Delete this list and everything on it?">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<button type="submit" class="danger">Delete list</button>
+		</form>
+	</dialog>
+}

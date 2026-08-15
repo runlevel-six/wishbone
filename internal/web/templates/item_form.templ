@@ -1,0 +1,207 @@
+package templates
+
+templ ItemForm(p Page, f ItemFormData) {
+	@Layout(p) {
+		<div class="page-head">
+			<h1>
+				if f.ItemID == "" {
+					Add an item
+				} else {
+					Edit item
+				}
+			</h1>
+			<a class="button" href={ templ.SafeURL("/lists/" + f.ListID) }>Back to list</a>
+		</div>
+		if f.FetchEnabled && f.ItemID == "" {
+			<section class="card">
+				<h2>Start from a link</h2>
+				<form class="row" hx-post={ "/lists/" + f.ListID + "/items/preview" } hx-target="#item-form" hx-swap="outerHTML" hx-indicator="#lookup-spinner">
+					<input type="url" name="url_raw" value={ f.URLRaw } placeholder="https://..." class="grow"/>
+					<button class="button primary" type="submit">Look it up</button>
+					<span id="lookup-spinner" class="htmx-indicator">checking…</span>
+				</form>
+				<p class="hint">
+					Wishbone fetches the page itself so the shop never sees who is looking. If it
+					cannot read the page, fill the form in by hand — that works just as well.
+				</p>
+			</section>
+		}
+		@ItemFormBody(p, f)
+	}
+}
+
+// ItemFormBody is swapped in place by the link lookup, so it carries its own
+// element id.
+templ ItemFormBody(p Page, f ItemFormData) {
+	<form id="item-form" class="card stack" method="post" action={ formAction(f) } enctype="multipart/form-data">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		if f.FetchError != "" {
+			<div class="flash flash-warn">
+				Could not read that page ({ f.FetchError }). Fill in whatever you know — a
+				hand-typed item is not a second-class item here.
+			</div>
+		}
+		if f.Suspect {
+			<div class="flash flash-warn">
+				<strong>This link looks wrong.</strong>
+				<ul>
+					for _, r := range f.SuspectReason {
+						<li>{ r }</li>
+					}
+				</ul>
+				Nothing was filled in automatically. Check the link, then enter the details
+				yourself if it is still the right product.
+			</div>
+		}
+		if f.Extracted && !f.Suspect {
+			<div class="flash flash-ok">Filled in from the page. Change anything that looks off.</div>
+		}
+		if len(otherErrors(f.Errors)) > 0 {
+			<div class="flash flash-error">
+				<strong>Some details need fixing.</strong>
+				<ul>
+					for _, e := range otherErrors(f.Errors) {
+						<li>{ e }</li>
+					}
+				</ul>
+			</div>
+		}
+		if len(f.Duplicates) > 0 {
+			<div class="flash flash-info">
+				This link is already on another list you can see:
+				for _, d := range f.Duplicates {
+					<span class="tag">{ d.ListName }: { d.ItemTitle }</span>
+				}
+				That may be fine — adding it anyway is allowed.
+			</div>
+		}
+		<label>
+			What is it?
+			<input type="text" name="title" value={ f.Title } required maxlength="200" autofocus/>
+			if f.Errors["title"] != "" {
+				<span class="error">{ f.Errors["title"] }</span>
+			}
+		</label>
+		<label>
+			Link
+			<input type="url" name="url_raw" value={ f.URLRaw } maxlength="2000"/>
+			if f.URL != "" && f.URL != f.URLRaw {
+				<span class="hint">Saved as { f.URL }</span>
+			}
+		</label>
+		<div class="row">
+			<label class="grow">
+				Price
+				<input type="text" name="price" value={ f.Price } placeholder="49.99" inputmode="decimal"/>
+				if f.Errors["price"] != "" {
+					<span class="error">{ f.Errors["price"] }</span>
+				}
+			</label>
+			<label>
+				Currency
+				<input type="text" name="currency" value={ f.Currency } maxlength="3" placeholder="USD" class="short"/>
+			</label>
+			<label>
+				How many?
+				<input type="number" name="quantity" value={ itoa(f.Quantity) } min="1" max="99" class="short"/>
+				if f.Errors["quantity"] != "" {
+					<span class="error">{ f.Errors["quantity"] }</span>
+				}
+			</label>
+		</div>
+		<label>
+			Category
+			<select name="category_id" hx-get="/category-fields" hx-target="#category-fields" hx-swap="innerHTML" hx-include="closest form">
+				for _, c := range f.Categories {
+					<option value={ c.ID } selected?={ c.ID == f.CategoryID }>{ c.Label }</option>
+				}
+			</select>
+		</label>
+		<div id="category-fields">
+			@CategoryFields(currentCategory(f))
+		</div>
+		if f.ItemID != "" && f.Notes != "" && len(currentCategory(f).Fields) > 0 {
+			@CategoryTranscribe(f.Notes)
+		}
+		<label>
+			Notes for whoever buys it
+			<textarea name="notes" rows="3" maxlength="2000">{ f.Notes }</textarea>
+			<span class="hint">Size, color, which edition — anything that stops a wrong guess.</span>
+		</label>
+		<label>
+			Description
+			<textarea name="description" rows="3" maxlength="4000">{ f.Descr }</textarea>
+		</label>
+		if f.ImageSHA != "" {
+			<div class="row">
+				<img class="thumb" src={ "/images/" + f.ImageSHA } alt=""/>
+				<label class="check">
+					<input type="checkbox" name="remove_image" value="1"/>
+					Remove this picture
+				</label>
+			</div>
+		}
+		<label>
+			Picture
+			<input type="file" name="image" accept="image/*"/>
+			if f.ImageURL != "" {
+				<span class="hint">A picture from the page will be saved with the item.</span>
+			}
+		</label>
+		if f.ImageURL != "" {
+			<input type="hidden" name="image_url" value={ f.ImageURL }/>
+		}
+		<input type="hidden" name="url" value={ f.URL }/>
+		<input type="hidden" name="field_sources" value={ sourcesJSON(f.Sources) }/>
+		<div class="row">
+			<button type="submit" class="primary">
+				if f.ItemID == "" {
+					Add to list
+				} else {
+					Save changes
+				}
+			</button>
+			<a class="button link" href={ templ.SafeURL("/lists/" + f.ListID) }>Cancel</a>
+		</div>
+	</form>
+}
+
+// CategoryFields renders the dynamic per-category inputs (plan §2.2, P3).
+templ CategoryFields(c CategoryOption) {
+	if len(c.Fields) > 0 {
+		<fieldset class="cat-fields">
+			<legend>{ c.Label } details</legend>
+			for _, fl := range c.Fields {
+				<label>
+					{ fl.Label }
+					if fl.Type == "select" {
+						<select name={ "attr_" + fl.Key }>
+							<option value="">—</option>
+							for _, opt := range fl.Options {
+								<option value={ opt } selected?={ opt == fl.Value }>{ opt }</option>
+							}
+						</select>
+					} else if fl.Type == "number" {
+						<input type="text" inputmode="decimal" name={ "attr_" + fl.Key } value={ fl.Value }/>
+					} else {
+						<input type="text" name={ "attr_" + fl.Key } value={ fl.Value } maxlength="200"/>
+					}
+				</label>
+			}
+		</fieldset>
+	}
+}
+
+// CategoryTranscribe shows the free-text notes next to the new structured
+// fields when a category is applied to an existing item, so the owner can copy
+// values across by hand. Notes are never parsed automatically (plan §7 P3):
+// an 80%-correct parse means a wrong gift.
+templ CategoryTranscribe(notes string) {
+	if notes != "" {
+		<aside class="card muted-card">
+			<h3>Your existing notes</h3>
+			<pre class="notes">{ notes }</pre>
+			<p class="hint">Copy anything useful into the fields above. Nothing is moved for you on purpose.</p>
+		</aside>
+	}
+}

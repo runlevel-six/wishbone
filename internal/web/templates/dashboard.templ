@@ -1,0 +1,62 @@
+package templates
+
+templ Dashboard(p Page, d DashboardData) {
+	@Layout(p) {
+		<div class="page-head">
+			<h1>Lists</h1>
+			<button class="primary" data-dialog-open="new-list">New list</button>
+		</div>
+		<dialog id="new-list" class="card">
+			<h2>New list</h2>
+			<form method="post" action="/lists" class="stack">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<label>
+					Name
+					<input type="text" name="name" required maxlength="80" placeholder="Christmas 2026"/>
+				</label>
+				<label>
+					Who can see it
+					<select name="visibility">
+						<option value="all_users">Everyone in the family</option>
+						<option value="selected">Only people I pick</option>
+						<option value="private">Just me</option>
+					</select>
+				</label>
+				<div class="row">
+					<button type="submit" class="primary">Create</button>
+					<button type="button" class="link" data-dialog-close>Cancel</button>
+				</div>
+			</form>
+		</dialog>
+		<section>
+			<h2>Your lists</h2>
+			if len(d.Mine) == 0 {
+				<p class="muted">You have no lists yet. Make one and start adding things you would like.</p>
+			}
+			<ul class="list-grid">
+				for _, l := range d.Mine {
+					<li class="card list-card">
+						<a class="list-name" href={ templ.SafeURL("/lists/" + l.List.ID) }>{ l.List.Name }</a>
+						<p class="muted small">
+							{ plural(l.ItemCount, "item", "items") } &middot; { visibilityLabel(l.List.Visibility) }
+						</p>
+					</li>
+				}
+			</ul>
+		</section>
+		<section>
+			<h2>Family lists</h2>
+			if len(d.Others) == 0 {
+				<p class="muted">Nobody has shared a list with you yet.</p>
+			}
+			<ul class="list-grid">
+				for _, l := range d.Others {
+					<li class="card list-card">
+						<a class="list-name" href={ templ.SafeURL("/lists/" + l.List.ID) }>{ l.List.Name }</a>
+						<p class="muted small">{ l.OwnerName } &middot; { plural(l.ItemCount, "item", "items") }</p>
+					</li>
+				}
+			</ul>
+		</section>
+	}
+}

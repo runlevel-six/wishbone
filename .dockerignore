@@ -1,0 +1,10 @@
+.git
+.github
+bin
+tmp
+docs
+deploy
+coverage.out
+*.db
+*.db-wal
+*.db-shm

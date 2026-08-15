@@ -1,0 +1,103 @@
+package templates
+
+templ Login(p Page, username string, errMsg string) {
+	@Bare(p) {
+		<h2>Sign in</h2>
+		if errMsg != "" {
+			<div class="flash flash-error">{ errMsg }</div>
+		}
+		<form method="post" action="/login" class="stack">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				Username
+				<input type="text" name="username" value={ username } autocomplete="username" autofocus required/>
+			</label>
+			<label>
+				Password
+				<input type="password" name="password" autocomplete="current-password" required/>
+			</label>
+			<button type="submit" class="primary">Sign in</button>
+		</form>
+		<p class="muted small">Wishbone is invite only. Ask whoever runs it for a link.</p>
+	}
+}
+
+templ Register(p Page, token, username, displayName, errMsg string) {
+	@Bare(p) {
+		<h2>Create your account</h2>
+		if errMsg != "" {
+			<div class="flash flash-error">{ errMsg }</div>
+		}
+		<form method="post" action={ templ.SafeURL("/register/" + token) } class="stack">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<label>
+				Name your family will recognize
+				<input type="text" name="display_name" value={ displayName } autocomplete="name" required maxlength="80"/>
+			</label>
+			<label>
+				Username
+				<input type="text" name="username" value={ username } autocomplete="username" required maxlength="40"/>
+			</label>
+			<label>
+				Password
+				<input type="password" name="password" autocomplete="new-password" required minlength="10"/>
+				<span class="hint">At least 10 characters.</span>
+			</label>
+			<label>
+				Confirm password
+				<input type="password" name="password_confirm" autocomplete="new-password" required minlength="10"/>
+			</label>
+			<button type="submit" class="primary">Create account</button>
+		</form>
+	}
+}
+
+templ Account(p Page, mustReset bool, errMsg, okMsg string) {
+	@Layout(p) {
+		<h1>Account</h1>
+		if mustReset {
+			<div class="flash flash-warn">
+				Your account was imported from the old wishlist. Please set a new password.
+			</div>
+		}
+		if errMsg != "" {
+			<div class="flash flash-error">{ errMsg }</div>
+		}
+		if okMsg != "" {
+			<div class="flash flash-ok">{ okMsg }</div>
+		}
+		<section class="card">
+			<h2>Your name</h2>
+			<form method="post" action="/account/profile" class="stack">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				<label>
+					Display name
+					<input type="text" name="display_name" value={ p.DisplayName() } required maxlength="80"/>
+				</label>
+				<button type="submit">Save</button>
+			</form>
+		</section>
+		<section class="card">
+			<h2>Change password</h2>
+			<form method="post" action="/account/password" class="stack">
+				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+				if !mustReset {
+					<label>
+						Current password
+						<input type="password" name="current_password" autocomplete="current-password" required/>
+					</label>
+				}
+				<label>
+					New password
+					<input type="password" name="new_password" autocomplete="new-password" required minlength="10"/>
+				</label>
+				<label>
+					Confirm new password
+					<input type="password" name="new_password_confirm" autocomplete="new-password" required minlength="10"/>
+				</label>
+				<button type="submit">Change password</button>
+				<p class="hint">Changing your password signs you out everywhere else.</p>
+			</form>
+		</section>
+	}
+}

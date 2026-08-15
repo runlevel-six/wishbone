@@ -1,0 +1,48 @@
+wishd (Wishbone)
+Copyright 2026 Jason Hall
+
+This product includes software developed as part of the wishd project,
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+--------------------------------------------------------------------------------
+Bundled third-party assets
+--------------------------------------------------------------------------------
+
+htmx 2.0.6 (internal/web/static/htmx.min.js)
+  https://github.com/bigskysoftware/htmx
+  Zero-Clause BSD (0BSD) — verified against the v2.0.6 tag
+  Vendored rather than loaded from a CDN: the app must work with no external
+  network dependency, and the CSP forbids third-party script origins.
+
+--------------------------------------------------------------------------------
+Separate processes (not linked, not distributed as part of this binary)
+--------------------------------------------------------------------------------
+
+get-product-data — used by the optional extraction sidecar
+  Status: LICENSE NOT YET VERIFIED. This is a tracked open item (plan §12) and
+  must be resolved before the sidecar image is built or deployed.
+
+  The parent project (Christmas Community) is AGPL-3.0. If the library is
+  AGPL-3.0 as well, running it as a separate, unmodified process invoked over
+  HTTP keeps it at arm's length from this Apache-2.0 codebase; that arrangement
+  should be recorded here once confirmed, along with the version in use.
+
+  The sidecar is optional. With EXTRACTOR_SIDECAR_URL unset, no part of it is
+  used, built, or shipped.
+
+--------------------------------------------------------------------------------
+Go module dependencies
+--------------------------------------------------------------------------------
+
+Direct dependencies and their licenses are listed in go.mod and resolved from
+the module proxy; run `go-licenses report ./...` (or inspect the module cache)
+for the authoritative list. Each LICENSE file below was read in the module
+cache; all are permissive and compatible with Apache-2.0 redistribution:
+
+  github.com/a-h/templ            MIT
+  github.com/go-chi/chi/v5        MIT
+  github.com/google/uuid          BSD-3-Clause
+  golang.org/x/crypto             BSD-3-Clause
+  golang.org/x/image              BSD-3-Clause
+  golang.org/x/net                BSD-3-Clause
+  modernc.org/sqlite              BSD-3-Clause

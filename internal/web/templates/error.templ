@@ -1,0 +1,19 @@
+package templates
+
+templ ErrorPage(p Page, code int, heading, detail string) {
+	@Layout(p) {
+		<section class="card narrow">
+			<h1>{ heading }</h1>
+			<p class="muted">{ detail }</p>
+			<p><a class="button" href="/">Back to your lists</a></p>
+		</section>
+	}
+}
+
+templ BareErrorPage(p Page, heading, detail string) {
+	@Bare(p) {
+		<h2>{ heading }</h2>
+		<p class="muted">{ detail }</p>
+		<p><a class="button" href="/login">Sign in</a></p>
+	}
+}
