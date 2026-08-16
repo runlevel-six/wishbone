@@ -109,6 +109,7 @@ func run() error {
 	client := fetch.New(fetch.Options{
 		UserAgent:      cfg.FetchUserAgent,
 		AcceptLanguage: cfg.FetchLang,
+		Impersonate:    cfg.FetchImpersonate,
 	})
 	sidecar := extract.NewSidecar(cfg.SidecarURL, cfg.SidecarTimeout)
 	extractor := extract.NewService(client, sidecar, cfg.FetchEnabled)

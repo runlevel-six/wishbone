@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"wishd/internal/fetch"
 )
 
 type Config struct {
@@ -37,8 +39,12 @@ type Config struct {
 	FetchEnabled   bool
 	FetchUserAgent string
 	FetchLang      string
-	SidecarURL     string
-	SidecarTimeout time.Duration
+	// FetchImpersonate is "" or "chrome". See internal/fetch: it changes the
+	// TLS handshake, not just the headers, and is off unless someone decided a
+	// specific shop was worth it.
+	FetchImpersonate string
+	SidecarURL       string
+	SidecarTimeout   time.Duration
 
 	LogLevel string
 }
@@ -56,7 +62,9 @@ func Load() (*Config, error) {
 		FetchEnabled:           envBool("WISHD_FETCH_ENABLED", true),
 		FetchUserAgent: env("WISHD_FETCH_USER_AGENT",
 			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
-		FetchLang:      env("WISHD_FETCH_ACCEPT_LANGUAGE", "en-US,en;q=0.9"),
+		FetchLang: env("WISHD_FETCH_ACCEPT_LANGUAGE", "en-US,en;q=0.9"),
+		FetchImpersonate: strings.ToLower(strings.TrimSpace(
+			env("WISHD_FETCH_IMPERSONATE", ""))),
 		SidecarURL:     strings.TrimRight(env("EXTRACTOR_SIDECAR_URL", ""), "/"),
 		SidecarTimeout: envDuration("EXTRACTOR_SIDECAR_TIMEOUT", 10*time.Second),
 		LogLevel:       env("WISHD_LOG_LEVEL", "info"),
@@ -94,6 +102,14 @@ func Load() (*Config, error) {
 		if _, err := url.Parse(c.SidecarURL); err != nil {
 			return nil, fmt.Errorf("EXTRACTOR_SIDECAR_URL: %w", err)
 		}
+	}
+	// Refused rather than ignored: a typo here would silently leave the app
+	// making the requests the operator set this to stop making.
+	switch c.FetchImpersonate {
+	case fetch.ImpersonateOff, fetch.ImpersonateChrome:
+	default:
+		return nil, fmt.Errorf("WISHD_FETCH_IMPERSONATE: %q is not a known mode (want %q)",
+			c.FetchImpersonate, fetch.ImpersonateChrome)
 	}
 	return c, nil
 }

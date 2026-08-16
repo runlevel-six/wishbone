@@ -22,9 +22,9 @@ func loadPage(t *testing.T, name, requested, final string) *extract.Page {
 	}
 	defer f.Close()
 
-	page, err := extract.ParseHead(f)
+	page, err := extract.ParseDocument(f)
 	if err != nil {
-		t.Fatalf("parse head: %v", err)
+		t.Fatalf("parse document: %v", err)
 	}
 	page.RequestedURL = mustURL(t, requested)
 	page.FinalURL = mustURL(t, final)
@@ -165,22 +165,136 @@ func TestNoTitleTagFallback(t *testing.T) {
 	}
 }
 
-// TestHeadOnlyParsing pins the streaming stop at </head> (plan §5.2).
-func TestHeadOnlyParsing(t *testing.T) {
-	html := `<html><head><meta property="og:title" content="Real title"></head>
+// TestHeadWinsOverBody pins the ordering rule that replaced the stop at
+// </head>. The body is parsed now — it has to be, or streaming-metadata pages
+// extract to nothing — so the head has to win on its own merits instead of by
+// being the only thing read. First value found wins, and the head is first.
+func TestHeadWinsOverBody(t *testing.T) {
+	html := `<html><head><title>Real title</title>
+	<meta property="og:title" content="Real title">
+	<link rel="canonical" href="https://shop.example.com/p/real"></head>
 	<body><meta property="og:title" content="Body injected title">
+	<link rel="canonical" href="https://shop.example.com/p/carousel">
+	<svg><title>Close icon</title></svg>
 	<script type="application/ld+json">{"@type":"Product","name":"Body product"}</script>
 	</body></html>`
 
-	page, err := extract.ParseHead(strings.NewReader(html))
+	page, err := extract.ParseDocument(strings.NewReader(html))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
 	if got := page.MetaProperty("og:title"); got != "Real title" {
 		t.Errorf("og:title = %q, want the head one", got)
 	}
-	if len(page.JSONLD) != 0 {
-		t.Errorf("body JSON-LD was parsed: %v", page.JSONLD)
+	if got := strings.TrimSpace(page.Title); got != "Real title" {
+		t.Errorf("title = %q, want the head one and not the SVG icon's", got)
+	}
+	if page.Canonical != "https://shop.example.com/p/real" {
+		t.Errorf("canonical = %q, want the head one", page.Canonical)
+	}
+	// The body block is now read. That is the point of the change: on a
+	// streaming-metadata page it is the only place the data exists.
+	if len(page.JSONLD) != 1 {
+		t.Errorf("body JSON-LD = %v, want it parsed", page.JSONLD)
+	}
+}
+
+// TestStreamedMetadataPage is the Next.js App Router shape, reduced from a live
+// department-store product page that returned a perfectly good 200 and
+// extracted to absolutely nothing.
+//
+// Everything that matters is wrong in the same way: the head is a stub, and the
+// title, the OpenGraph tags, the canonical link and the JSON-LD are all in the
+// body — the JSON-LD not even as a script tag, but as a prop inside the React
+// Server Components payload, split across two pushes so that a per-chunk scan
+// would find neither half.
+//
+// The fixture also carries a neighbour product in the same payload, because a
+// recommendation rail is the normal case and taking its price would be worse
+// than extracting nothing at all.
+func TestStreamedMetadataPage(t *testing.T) {
+	const u = "https://shop.example.com/p/field-jacket/FJ-2201.html"
+	page := loadPage(t, "product_streamed_metadata.html", u, u)
+
+	// The premise: nothing here is reachable the old way.
+	if len(page.FlightChunks) == 0 {
+		t.Fatal("no flight chunks collected; the fixture is not exercising the payload")
+	}
+
+	res := metadataChain().Run(context.Background(), page)
+	extract.ApplySoft404Guard(res, page)
+
+	if res.Title != "Ridgeline Waxed Cotton Field Jacket" {
+		t.Errorf("title = %q", res.Title)
+	}
+	if res.SKU != "FJ-2201" {
+		t.Errorf("sku = %q, want the page's own", res.SKU)
+	}
+	if res.Brand != "Ridgeline Supply" {
+		t.Errorf("brand = %q", res.Brand)
+	}
+	if res.PriceCents == nil || *res.PriceCents != 14800 {
+		t.Errorf("price = %v, want 14800 cents", res.PriceCents)
+	}
+	if res.Currency != "USD" {
+		t.Errorf("currency = %q", res.Currency)
+	}
+	// The neighbour in the same payload must not have been picked up.
+	if res.SKU == "WS-9100" || (res.PriceCents != nil && *res.PriceCents == 3900) {
+		t.Error("extracted the recommendation rail's product instead of the page's")
+	}
+	// Streamed <link rel=canonical> is found even though it is in the body.
+	if page.Canonical != u {
+		t.Errorf("canonical = %q, want %q", page.Canonical, u)
+	}
+	// The SVG icon's <title> must not become the page title.
+	if strings.Contains(page.Title, "Add to bag") {
+		t.Errorf("page title picked up an SVG icon title: %q", page.Title)
+	}
+	// A complete extraction from a live page: no reason to doubt it.
+	if res.Suspect {
+		t.Errorf("streamed-metadata product flagged suspect: %v", res.SuspectReason)
+	}
+	if res.LinkStatus != model.LinkOK {
+		t.Errorf("link status = %q, want ok", res.LinkStatus)
+	}
+	// Provenance: this came through the JSON-LD tier, which is what lets
+	// hasStructuredProduct treat it as a real product claim.
+	if got := res.Sources["title"]; got != extract.SourceJSONLD {
+		t.Errorf("title source = %q, want jsonld", got)
+	}
+}
+
+// TestCarouselProductLosesToThePage is what the old head-only stop was really
+// buying: immunity from a recommendation block's JSON-LD. Parsing the body
+// gives that up, so the address each Product claims has to earn it back.
+//
+// Both nodes are well-formed Products and the carousel's comes first in
+// document order, so document order alone picks the wrong gift.
+func TestCarouselProductLosesToThePage(t *testing.T) {
+	const u = "https://shop.example.com/p/real-item"
+	html := `<html><head></head><body>
+	<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product",
+	  "@id":"https://shop.example.com/p/you-may-also-like","name":"Neighbour item",
+	  "sku":"NEIGHBOUR-1","offers":{"@type":"Offer","price":"99.00","priceCurrency":"USD"}}</script>
+	<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product",
+	  "@id":"https://shop.example.com/p/real-item","name":"The real item",
+	  "sku":"REAL-1","offers":{"@type":"Offer","price":"24.00","priceCurrency":"USD"}}</script>
+	</body></html>`
+
+	page, err := extract.ParseDocument(strings.NewReader(html))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	page.RequestedURL = mustURL(t, u)
+	page.FinalURL = page.RequestedURL
+
+	res := metadataChain().Run(context.Background(), page)
+	if res.Title != "The real item" || res.SKU != "REAL-1" {
+		t.Errorf("took the carousel's product: title=%q sku=%q", res.Title, res.SKU)
+	}
+	if res.PriceCents == nil || *res.PriceCents != 2400 {
+		t.Errorf("price = %v, want the page's own 2400", res.PriceCents)
 	}
 }
 

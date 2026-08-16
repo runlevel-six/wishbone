@@ -80,9 +80,22 @@ kubectl exec deploy/wishd -c extractor -- \
 
 | Variable | Why you would change it |
 |---|---|
-| `WISHD_FETCH_USER_AGENT` | A retailer blocks the default. Browser-like strings fare better than bot-like ones |
+| `WISHD_FETCH_USER_AGENT` | A retailer blocks the default. A browser-like string also switches on the rest of a browser's header set — client hints and `Sec-Fetch-*` — because sending three headers under a Chrome User-Agent is itself what some retailers reject |
 | `WISHD_FETCH_ACCEPT_LANGUAGE` | You want prices in a different locale |
 | `EXTRACTOR_SIDECAR_TIMEOUT` | The sidecar is slow on some sites and you would rather wait than fall back |
+| `WISHD_FETCH_IMPERSONATE` | A retailer refuses even a full browser header set. `chrome` matches Chrome's TLS handshake — see [Extraction](../reference/extraction.md#when-a-retailer-inspects-the-handshake) for why it is off by default |
+
+## Decide whether impersonation would help
+
+Try it on one URL before turning it on for the deployment:
+
+```sh
+kubectl exec deploy/wishd -c wishd -- /wishd check-url -impersonate chrome '<url>'
+```
+
+If that turns a 403 into a 200, set `WISHD_FETCH_IMPERSONATE=chrome` in your
+deployment. If it does not, the retailer is running a JS challenge and no
+setting here reaches it.
 
 Timeouts and size caps for page fetches are fixed in code, not configurable:
 5s total, 2s to connect, 2 MiB per page, 5 MiB per image.
@@ -90,7 +103,22 @@ Timeouts and size caps for page fetches are fixed in code, not configurable:
 ## When a lookup gets it wrong
 
 - **"This link looks wrong"** — the soft-404 guard fired and filled in nothing
-  deliberately. Check the link is still live; if it is, type the details in.
+  deliberately. Read the reasons and what the page said, then either **Use
+  these details**, or take the canonical address it offers if the page named
+  one, or type the details in. An item added this way keeps `link_status =
+  suspect`, so the list keeps saying so.
+- **The canonical address names a different product** — normal on marketplaces
+  that collapse every size and color onto one indexed listing. Take the other
+  address when it is the same thing under a tidier URL; leave it when which
+  variant you get matters, since that is a different purchase.
+- **"That shop would not let Wishbone read the page"** — the retailer answered
+  403 or similar. Nothing is wrong with the link and nothing is recorded
+  against it; type the details in. Confirm with `check-url`, which prints the
+  HTTP status. Some large chains refuse every request this app makes by
+  default, from an address whose browser loads the page fine. Trying
+  `check-url -impersonate chrome` on the same URL says whether
+  `WISHD_FETCH_IMPERSONATE=chrome` would change that — for at least one such
+  retailer it does.
 - **Wrong price or title** — edit the item. Corrections are recorded as
   user-sourced, so nothing will overwrite them later.
 - **No picture** — the retailer served a format Wishbone cannot re-encode, or

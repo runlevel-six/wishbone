@@ -112,6 +112,19 @@ type ItemFormData struct {
 	Suspect       bool
 	SuspectReason []string
 	Extracted     bool
+	// Found is what a suspect lookup did read. Showing it is not applying it:
+	// the fields stay empty until the owner clicks.
+	Found *FoundDetails
+	// Accepted marks a form filled from a suspect page because the owner asked
+	// for it, which reads differently from a clean lookup and says so.
+	Accepted bool
+	// LinkStatus rides along so an item created from a lookup keeps what the
+	// lookup concluded about its link.
+	LinkStatus string
+	// Blocked marks a retailer that refused the request — bot protection, not
+	// a bad link. BlockedStatus is what it answered.
+	Blocked       bool
+	BlockedStatus int
 	// NothingFound marks a page that was read successfully but carried no
 	// usable product details — common on marketplaces that serve an
 	// interstitial to non-browser clients.
@@ -125,6 +138,33 @@ type ItemFormData struct {
 	AutoLookup bool
 
 	Errors map[string]string
+}
+
+// FoundDetails carries a held-back extraction through the warning and back to
+// the server if the owner accepts it. It is round-tripped through the form
+// rather than re-fetched on the way back so that what is applied is exactly
+// what was on screen: a second fetch of the same URL can legitimately answer
+// differently — a retailer that rate-limits, a page that changed — and a
+// button labelled "use these details" that quietly uses others would be worse
+// than the guard it is softening.
+type FoundDetails struct {
+	Title    string
+	Descr    string
+	Price    string
+	Currency string
+	ImageURL string
+	URL      string
+	URLRaw   string
+	// LinkStatus is what the guard concluded, carried so an accepted result
+	// keeps it rather than being reset to a cheerier one.
+	LinkStatus string
+	// Attrs and Sources are JSON objects, carried opaquely.
+	Attrs   string
+	Sources string
+	// Canonical is the address the page claimed for itself: same host,
+	// normalized, worth a second lookup. Empty when the page named none, or
+	// named one there is no point offering.
+	Canonical string
 }
 
 // ShareListOption is one destination offered for a shared link.

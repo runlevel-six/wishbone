@@ -192,6 +192,12 @@ pre.notes { font: inherit; }
 .attrs dt { color: var(--muted); margin: 0; }
 .attrs dd { margin: 0; }
 
+/* The held-back extraction reads as a list of claims about the product, so it
+   stacks rather than flowing inline: a title and a description are too long to
+   sit side by side. */
+.found { flex-direction: column; gap: .25rem; margin-bottom: .6rem; }
+.found dt { min-width: 6rem; }
+
 .tag {
 	display: inline-block;
 	padding: .05rem .45rem;

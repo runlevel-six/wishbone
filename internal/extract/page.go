@@ -20,10 +20,25 @@ type Meta struct {
 	Content  string
 }
 
-// Page is the parsed head of a fetched document.
+// Page is the metadata of a fetched document.
 //
-// Only the head is parsed (plan §5.2): product pages are routinely megabytes
-// below the fold and none of it carries the metadata we want.
+// Originally this was the parsed <head> alone (plan §5.2), on the reasoning
+// that product pages are megabytes below the fold and none of it carries what
+// we want. The second half of that is no longer true, and the reasoning had a
+// hidden assumption: that a document's metadata is in its head.
+//
+// On a framework that streams metadata — Next.js App Router, and it is not
+// alone — the head is a stub. React emits <title>, <meta> and <link rel=
+// canonical> inline in the body as the response streams, and hoists them into
+// the head when it hydrates. A department store chain's product page is the
+// worked example: a 16KB head, and every piece of metadata at byte 1,083,000
+// of 1,132,379. Parsing only the head there returns an empty Page from a
+// perfectly good 200, and every tier downstream correctly reports nothing.
+//
+// So the whole document is scanned. The cost is bounded where it was always
+// actually bounded — MaxPageBytes, enforced by the fetcher before a byte of
+// this runs — so stopping at <body> was never saving a fetch, only skipping
+// part of a buffer already in memory.
 type Page struct {
 	RequestedURL *url.URL
 	FinalURL     *url.URL
@@ -34,22 +49,41 @@ type Page struct {
 	Metas     []Meta
 	JSONLD    []string
 	ItemTypes []string
+
+	// FlightChunks holds the inline scripts of a React Server Components
+	// payload, in document order. See nextflight.go for what is done with
+	// them and why they are not JSON-LD yet.
+	FlightChunks []string
 }
 
-// ParseHead streams HTML and stops at </head>.
-func ParseHead(r io.Reader) (*Page, error) {
+// ParseDocument streams HTML and collects metadata from the whole document.
+//
+// Scanning past </head> means competing with the body for two fields that used
+// to be unambiguous, so both take the first value found rather than the last:
+// in a document that has a real head, the head still wins, and in one that
+// does not, the streamed metadata beats anything further down.
+func ParseDocument(r io.Reader) (*Page, error) {
 	p := &Page{}
 	z := html.NewTokenizer(r)
-	// A head that never closes is a malformed page; cap the work either way.
-	z.SetMaxBuf(1 << 20)
+	// One token cannot exceed the document, and the document is already capped
+	// by the fetcher. A single inline script — a flight payload chunk, most
+	// likely — is the token that gets close.
+	z.SetMaxBuf(MaxPageBytes)
 
 	inTitle := false
-	var scriptType string
+	titleDone := false
+	// <title> is not only a head tag: inline SVG icons carry one for
+	// accessibility, and there are dozens in a storefront's body. Taking one
+	// of those as the page title would be a new way to be confidently wrong,
+	// so titles inside an <svg> are skipped entirely.
+	svgDepth := 0
 	var scriptBuf bytes.Buffer
+	inScript := false
 	inLDScript := false
 
 	for {
-		switch z.Next() {
+		tt := z.Next()
+		switch tt {
 		case html.ErrorToken:
 			if errors.Is(z.Err(), io.EOF) {
 				return p, nil
@@ -61,7 +95,7 @@ func ParseHead(r io.Reader) (*Page, error) {
 			if inTitle {
 				p.Title += string(z.Text())
 			}
-			if inLDScript {
+			if inScript {
 				scriptBuf.Write(z.Text())
 			}
 
@@ -75,9 +109,20 @@ func ParseHead(r io.Reader) (*Page, error) {
 				attrs[strings.ToLower(string(k))] = string(v)
 			}
 
+			// A self-closing <svg/> or <script/> never gets an end tag, so
+			// letting either open a state here would strand it open for the
+			// rest of the document.
+			selfClosing := tt == html.SelfClosingTagToken
+
 			switch tag {
+			case "svg":
+				if !selfClosing {
+					svgDepth++
+				}
 			case "title":
-				inTitle = true
+				if !selfClosing && svgDepth == 0 && !titleDone {
+					inTitle = true
+				}
 			case "meta":
 				p.Metas = append(p.Metas, Meta{
 					Property: strings.ToLower(attrs["property"]),
@@ -86,18 +131,21 @@ func ParseHead(r io.Reader) (*Page, error) {
 					Content:  attrs["content"],
 				})
 			case "link":
-				if strings.EqualFold(attrs["rel"], "canonical") && attrs["href"] != "" {
+				if strings.EqualFold(attrs["rel"], "canonical") && attrs["href"] != "" &&
+					p.Canonical == "" {
 					p.Canonical = attrs["href"]
 				}
 			case "script":
-				scriptType = strings.ToLower(strings.TrimSpace(attrs["type"]))
-				if scriptType == "application/ld+json" {
-					inLDScript = true
+				// Every inline script is buffered now, not only ld+json: which
+				// ones matter cannot be told from the start tag, because a
+				// flight payload chunk is an ordinary untyped <script>. What
+				// it is gets decided at </script>, on its content.
+				if !selfClosing {
+					inScript = true
+					inLDScript = strings.EqualFold(
+						strings.TrimSpace(attrs["type"]), "application/ld+json")
 					scriptBuf.Reset()
 				}
-			case "body":
-				// Some pages omit </head> entirely; <body> ends it just as well.
-				return p, nil
 			}
 			if it := attrs["itemtype"]; it != "" {
 				p.ItemTypes = append(p.ItemTypes, it)
@@ -106,16 +154,27 @@ func ParseHead(r io.Reader) (*Page, error) {
 		case html.EndTagToken:
 			name, _ := z.TagName()
 			switch string(name) {
-			case "title":
-				inTitle = false
-			case "script":
-				if inLDScript {
-					p.JSONLD = append(p.JSONLD, scriptBuf.String())
-					inLDScript = false
-					scriptBuf.Reset()
+			case "svg":
+				if svgDepth > 0 {
+					svgDepth--
 				}
-			case "head":
-				return p, nil
+			case "title":
+				if inTitle {
+					inTitle = false
+					// Only the first real title counts; everything after it in
+					// the body is someone else's heading.
+					titleDone = strings.TrimSpace(p.Title) != ""
+				}
+			case "script":
+				switch {
+				case inLDScript:
+					p.JSONLD = append(p.JSONLD, scriptBuf.String())
+				case isFlightChunk(scriptBuf.Bytes()):
+					p.FlightChunks = append(p.FlightChunks, scriptBuf.String())
+				}
+				inScript = false
+				inLDScript = false
+				scriptBuf.Reset()
 			}
 		}
 	}
@@ -154,6 +213,15 @@ func (p *Page) MetaItemProp(names ...string) string {
 		}
 	}
 	return ""
+}
+
+// pageAddress is the address a page should be judged against: where the fetch
+// ended up, or where it was aimed if that is all we have.
+func pageAddress(p *Page) *url.URL {
+	if p.FinalURL != nil {
+		return p.FinalURL
+	}
+	return p.RequestedURL
 }
 
 // ResolveURL makes a possibly-relative URL from the page absolute.

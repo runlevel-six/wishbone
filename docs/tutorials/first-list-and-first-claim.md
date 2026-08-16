@@ -137,7 +137,14 @@ One of three things happens, and all three are fine:
 - Wishbone tells you the link looks wrong and fills in *nothing*. That is the
   soft-404 guard: some retailers answer a dead product link with a perfectly
   valid-looking page describing something else, and a confidently wrong item is
-  worse than an empty form.
+  worse than an empty form. It still shows you what the page said, with two
+  buttons — **Use these details** applies it anyway, and if the page named a
+  different address as its own, **Look up … instead** runs the lookup against
+  that one. Read the reasons before picking: on a marketplace, the other
+  address is often the same garment in a different size.
+- It says the shop would not let it read the page. Some big retailers refuse
+  anything that is not a person with a browser. Your link is fine — type the
+  rest in.
 - It says it could not read the page. Type the details in yourself; a
   hand-entered item is not a second-class item here.
 

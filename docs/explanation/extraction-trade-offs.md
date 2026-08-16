@@ -24,10 +24,57 @@ at all: does the page call itself a product, did the URL structurally shift
 under us, did the canonical link disagree, did tiers that normally find a price
 find nothing?
 
-If any of that fires, **nothing is filled in.** The person is shown what was
-found and what looked wrong, and types the item themselves.
+If any of that fires, **nothing is filled in automatically.**
 
-An empty form costs thirty seconds. A wrong item costs a present.
+## Refusing to fill in is not the same as refusing to show
+
+The first version of the guard threw the extraction away and told the person
+the form was empty — while the server had the title and price in hand. That
+overshoots. What makes a wrong item expensive is that nothing on screen
+disagrees with it; a value shown *under a warning explaining what looked
+wrong* has no such problem.
+
+So the warning shows what the page said and offers to apply it, and the item
+keeps its `suspect` mark either way. The machine still refuses to be confident.
+The person is allowed to be, having seen the evidence.
+
+The same reasoning decides what to do with a canonical address that names a
+different product — the common case on marketplaces, where every size and color
+of one garment is collapsed onto whichever listing is indexed. Following it
+automatically is exactly the confidently-wrong-item failure in a new costume:
+the sibling may be a different size, and the details would then describe one
+product while the saved link points at another. So the address is offered as a
+second lookup the owner can choose, and never as data.
+
+An empty form costs thirty seconds. A wrong item costs a present. A withheld
+fact the owner could have judged costs trust in the warning itself — which is
+what makes the next warning get clicked through.
+
+## Being refused is not a verdict on the link
+
+Some retailers answer a datacenter address with 403 whatever it asks for. That
+is a fact about the retailer. The first version treated any error status as a
+dead link, so a perfectly good URL came back marked dead with a warning telling
+the person to go check it — sending them to inspect the one part of the
+situation that was never wrong.
+
+Blocked and suspect are now separate outcomes. Suspect means *the page said
+something and we doubt it*; blocked means *the page said nothing to us*. Only
+the first is evidence about a link.
+
+Escalating past that is a decision, not a default. Matching a browser's TLS
+fingerprint, driving a headless browser, or renting residential addresses each
+buy a few more sites for a while, and all three are a race against people who
+do this full time. Losing that race quietly — extraction that works until it
+doesn't — is worse than a form that says plainly who refused and lets you type.
+
+So the one escalation that is implemented, `WISHD_FETCH_IMPERSONATE=chrome`,
+ships switched off. Turning it on is someone deciding a particular shop is
+worth the maintenance, having checked with `check-url -impersonate chrome` that
+it would actually help. The two escalations that are not implemented are the
+two that would have cost more than they bought: a headless browser executes
+untrusted JavaScript from arbitrary pasted URLs, and residential proxy pools
+are usually assembled from people who did not meaningfully agree to be in them.
 
 ## Manual entry is a first-class path, not a fallback
 
@@ -55,15 +102,48 @@ safe. If a person corrected the title, that field is marked `user`, and a later
 automated pass can leave it alone instead of overwriting a human's judgment
 with a scraper's.
 
-## Head-only parsing
+## Whole-document parsing
 
-Only the `<head>` is fetched and parsed, stopping the stream at `</head>`.
-Product pages are frequently megabytes of markup below the fold and none of it
-carries the metadata worth having.
+This used to be head-only parsing, stopping the stream at `</head>` on the
+reasoning that product pages are megabytes of markup below the fold and none of
+it carries the metadata worth having.
 
-The trade-off is real and accepted: body-level microdata is invisible to us.
-It is largely a legacy format at this point, and the cost of the alternative —
-parsing megabytes of hostile HTML per paste — is not worth its remaining share.
+The second half of that turned out to be false, and the reasoning had a hidden
+assumption inside it: that a document's metadata is in its head.
+
+On a framework that streams metadata, it is not. React emits `<title>`,
+`<meta>` and `<link rel=canonical>` inline in the *body* as the response
+streams, and hoists them into the head only when it hydrates. A Next.js App
+Router product page therefore has a stub head and all of its metadata near the
+end of the document. On the page that prompted this — a live retail product
+page returning a perfectly ordinary 200 — the head was 16KB and every piece of
+metadata sat at byte 1,083,000 of 1,132,379. Head-only parsing extracted
+literally nothing from it, and every tier was correct to report nothing,
+because nothing is what it was shown.
+
+The cost of parsing the rest was also smaller than it looked. The document is
+capped at `MaxPageBytes` by the fetcher before the parser runs, so stopping at
+`<body>` never avoided fetching anything; it only skipped part of a buffer
+already in memory. Tokenizing the remainder is milliseconds.
+
+What the old stop *was* quietly buying is the part worth naming, because it had
+to be paid for explicitly:
+
+- **A recommendation rail's JSON-LD is now in scope.** "You may also like" ships
+  Product nodes as well-formed as the page's own, and taking one yields a
+  complete, confident, wrong item. So a Product node whose `@id` or `url` is
+  this page's address is preferred over one that is not. Nothing is discarded
+  for lacking an `@id` — plenty of honest pages omit it — but when the document
+  describes several products and one of them claims to be this page, that one
+  wins.
+- **`<title>` inside inline SVG.** Icon markup carries `<title>` for screen
+  readers, and a storefront body has dozens. Only the first `<title>` outside
+  an `<svg>` is taken.
+- **First value wins, not last.** With the body in scope, the head has to win
+  on its merits rather than by being the only thing read.
+
+Body-level microdata, previously listed here as an accepted loss, is no longer
+one.
 
 ## No inferred categories
 

@@ -49,6 +49,13 @@ type Result struct {
 	Suspect       bool
 	SuspectReason []string
 	LinkStatus    string
+
+	// Blocked marks a page the retailer refused to serve — 403 and its
+	// relatives. It is deliberately not Suspect: the guard's job is to doubt
+	// what a page said, and a page that said nothing gives it nothing to
+	// doubt. The link is presumed fine, because nothing was learned about it.
+	Blocked       bool
+	BlockedStatus int
 }
 
 // Chain runs extractors in order, merging field by field.

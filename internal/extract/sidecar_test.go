@@ -32,7 +32,7 @@ func sidecarStub(t *testing.T, status int, body string) *httptest.Server {
 
 func sidecarPage(t *testing.T, head string) *extract.Page {
 	t.Helper()
-	page, err := extract.ParseHead(strings.NewReader("<html><head>" + head + "</head></html>"))
+	page, err := extract.ParseDocument(strings.NewReader("<html><head>" + head + "</head></html>"))
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

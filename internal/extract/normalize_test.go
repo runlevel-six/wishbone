@@ -13,7 +13,7 @@ import (
 )
 
 // TestNormalizeURL covers plan §5.1. The cases mirror the shapes in the
-// extraction corpus — AmazonSmile leftovers, Amazon slug/ref crumbs, locale
+// extraction corpus — retired-alias leftovers, marketplace slug/ref crumbs, locale
 // query parameters — with placeholder identifiers.
 func TestNormalizeURL(t *testing.T) {
 	cases := []struct {
@@ -22,12 +22,12 @@ func TestNormalizeURL(t *testing.T) {
 		want string
 	}{
 		{
-			"amazonsmile is dead and lives on in the legacy data",
+			"the retired smile. alias lives on in the legacy data",
 			"https://smile.amazon.com/gp/product/B0EXAMPLE1/",
 			"https://www.amazon.com/dp/B0EXAMPLE1",
 		},
 		{
-			"amazon slug and ref crumbs are navigation, not identity",
+			"marketplace slug and ref crumbs are navigation, not identity",
 			"https://www.amazon.com/Some-Long-Product-Slug/dp/B0EXAMPLE2/ref=sr_1_3?crid=X&qid=1",
 			"https://www.amazon.com/dp/B0EXAMPLE2",
 		},
@@ -138,7 +138,7 @@ func TestShopifyTier(t *testing.T) {
 	defer srv.Close()
 
 	client := fetch.New(fetch.Options{AllowLoopback: true})
-	page, err := extract.ParseHead(strings.NewReader(
+	page, err := extract.ParseDocument(strings.NewReader(
 		`<html><head><meta property="og:type" content="product">
 		 <meta property="product:price:currency" content="USD"></head><body></body></html>`))
 	if err != nil {
@@ -186,7 +186,7 @@ func TestShopifyTierIgnoresNonShopify(t *testing.T) {
 	defer srv.Close()
 
 	client := fetch.New(fetch.Options{AllowLoopback: true})
-	page, _ := extract.ParseHead(strings.NewReader(
+	page, _ := extract.ParseDocument(strings.NewReader(
 		`<html><head><meta property="og:title" content="A Thing"></head></html>`))
 	page.RequestedURL = mustURL(t, srv.URL+"/products/a-thing")
 	page.FinalURL = page.RequestedURL

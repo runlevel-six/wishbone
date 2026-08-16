@@ -2,6 +2,7 @@ package extract
 
 import (
 	"net/url"
+	"strconv"
 	"strings"
 
 	"wishd/internal/model"
@@ -22,10 +23,35 @@ func ApplySoft404Guard(res *Result, page *Page) {
 		final = requested
 	}
 
+	// An error status splits two ways, and conflating them tells people the
+	// wrong thing about a link that is fine.
+	//
+	// 404 and 410 are the retailer saying the thing is not there. That is
+	// evidence about the link, and the strongest kind.
+	//
+	// 403, 429 and the rest are the retailer declining to talk to *us*. Some
+	// answer 403 to the Go fetcher and to the sidecar alike, from the same
+	// address whose browser opens the page fine. Calling that link dead is a
+	// lie about the person's link, and it sends them off to check something
+	// that was never wrong.
 	if page.StatusCode >= 400 {
-		res.Suspect = true
-		res.SuspectReason = append(res.SuspectReason, "the page returned an error status")
-		res.LinkStatus = model.LinkDead
+		switch page.StatusCode {
+		case 404, 410:
+			res.Suspect = true
+			res.SuspectReason = append(res.SuspectReason, "the page is gone (the shop returned "+
+				strconv.Itoa(page.StatusCode)+")")
+			res.LinkStatus = model.LinkDead
+		default:
+			// Nothing was learned about the link, so nothing is claimed about
+			// it. Whatever the chain scraped off a block page is discarded:
+			// those pages carry meta tags too, and an item titled "Access
+			// Denied" is the confidently-wrong-item failure with a new cause.
+			res.Blocked = true
+			res.BlockedStatus = page.StatusCode
+			res.Fields = Fields{}
+			res.Sources = map[string]string{}
+			res.LinkStatus = model.LinkUnknown
+		}
 		return
 	}
 
@@ -89,6 +115,45 @@ func ApplySoft404Guard(res *Result, page *Page) {
 	res.SuspectReason = dedupeStrings(res.SuspectReason)
 }
 
+// CanonicalAlternative returns the address a page claims for itself, resolved
+// against the address actually fetched and normalized, when that claim is a
+// plausible thing to look up instead. It returns "" when there is nothing
+// worth offering: no canonical, one that normalizes back to the address
+// already fetched, or one on another site.
+//
+// It exists for the case the guard fires on most often. A live product page
+// names a different product as canonical — a large marketplace collapsing
+// every size and color of one garment onto whichever listing it indexes,
+// which is the usual reason. Sometimes that sibling
+// is what the person actually wants; sometimes it is a different size and
+// buying it would be the wrong gift. Nothing here decides which. The owner is
+// offered the address and picks.
+//
+// Same host only. The re-lookup runs through the ordinary fetch path with its
+// address guard, but a canonical tag is input written by the page being
+// examined, and no honest one points at another site.
+func CanonicalAlternative(canonical, fetched string) string {
+	canonical = strings.TrimSpace(canonical)
+	if canonical == "" || fetched == "" {
+		return ""
+	}
+	base, err := url.Parse(fetched)
+	if err != nil {
+		return ""
+	}
+	// Resolved against the base so a relative canonical — common enough —
+	// works, and so a scheme-relative one cannot change host silently.
+	cu, err := base.Parse(canonical)
+	if err != nil || !strings.EqualFold(cu.Host, base.Host) {
+		return ""
+	}
+	normalized, err := NormalizeURL(cu.String())
+	if err != nil || normalized == "" || normalized == fetched {
+		return ""
+	}
+	return normalized
+}
+
 // hasStructuredProduct reports whether a structured-data tier — not
 // OpenGraph — supplied the title, together with a SKU or a price. That
 // combination is a page asserting "this is a specific purchasable product",
@@ -124,8 +189,8 @@ func ranReliableTier(res *Result) bool {
 }
 
 // identifyingSegment returns the last meaningful path segment — the product
-// handle, slug or ASIN. Amazon appends navigation state after the ASIN, so a
-// "contains" comparison is used rather than equality.
+// handle, slug or listing id. Marketplaces append navigation state after that
+// id, so a "contains" comparison is used rather than equality.
 func identifyingSegment(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	for i := len(parts) - 1; i >= 0; i-- {
@@ -133,7 +198,7 @@ func identifyingSegment(path string) string {
 		if p == "" {
 			continue
 		}
-		// Skip Amazon's trailing ref= crumbs.
+		// Skip trailing ref= navigation crumbs.
 		if strings.HasPrefix(p, "ref=") {
 			continue
 		}

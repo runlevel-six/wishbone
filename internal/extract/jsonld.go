@@ -15,7 +15,41 @@ func (JSONLD) Applies(*url.URL) bool { return true }
 
 func (JSONLD) Extract(_ context.Context, p *Page) (Fields, error) {
 	f := Fields{Attributes: map[string]string{}}
-	for _, raw := range p.JSONLD {
+	for _, node := range jsonldProducts(p) {
+		applyProduct(p, node, &f)
+		if f.Title != "" {
+			return f, nil
+		}
+	}
+	return f, nil
+}
+
+// jsonldProducts returns every Product node in the document's JSON-LD, in the
+// order they should be trusted.
+//
+// Document order is the default and is usually right: a page's own data is
+// published before the carousel of things you might also like. It stopped
+// being sufficient once the body was parsed too, because a recommendation
+// block is JSON-LD as legitimate-looking as the page's own, and taking the
+// wrong one produces a complete, confident, wrong item — the failure the
+// soft-404 guard exists to prevent, arriving from inside the page.
+//
+// So a node that claims this page's address is promoted ahead of the rest.
+// Nothing is discarded on that basis: a page whose Product carries no @id at
+// all is ordinary, and demoting it to nothing would lose more than it saves.
+func jsonldProducts(p *Page) []map[string]any {
+	want := pageAddress(p)
+	var owned, others []map[string]any
+
+	// Script tags first, then whatever was recoverable from a framework's
+	// hydration payload. A real tag is the page saying this plainly and
+	// outranks anything reconstructed; the recovery happens here rather than
+	// at the call site so that running the chain is all anyone has to remember
+	// to do.
+	docs := append(append([]string(nil), p.JSONLD...),
+		recoverFlightJSONLD(p.FlightChunks, want)...)
+
+	for _, raw := range docs {
 		var doc any
 		if err := json.Unmarshal([]byte(strings.TrimSpace(raw)), &doc); err != nil {
 			continue // one malformed block must not fail the tier
@@ -24,13 +58,15 @@ func (JSONLD) Extract(_ context.Context, p *Page) (Fields, error) {
 			if !isType(node, "Product") {
 				continue
 			}
-			applyProduct(p, node, &f)
-			if f.Title != "" {
-				return f, nil
+			claimed := nodeURL(node)
+			if want != nil && claimed != "" && sameProductAddress(claimed, want) {
+				owned = append(owned, node)
+				continue
 			}
+			others = append(others, node)
 		}
 	}
-	return f, nil
+	return append(owned, others...)
 }
 
 // flattenLD walks @graph arrays and nested lists into a flat list of objects.

@@ -20,6 +20,46 @@ func csrfHeader(token string) string {
 	return string(b)
 }
 
+// hxVals renders an hx-vals attribute from alternating key/value pairs, so a
+// button can post a value the surrounding form does not carry.
+func hxVals(kv ...string) string {
+	m := map[string]string{}
+	for i := 0; i+1 < len(kv); i += 2 {
+		m[kv[i]] = kv[i+1]
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+// believedLookup reports whether the form is showing a lookup that ran, was
+// believed, and was applied on its own. Every other outcome — held back by the
+// guard, accepted under protest, refused by the retailer — has its own flash
+// saying so, and must not also be described as an ordinary success.
+func believedLookup(f ItemFormData) bool {
+	return f.Extracted && !f.Suspect && !f.Blocked && !f.Accepted
+}
+
+// priceLabel joins a price with its currency when there is one.
+func priceLabel(price, currency string) string {
+	if currency == "" {
+		return price
+	}
+	return price + " " + currency
+}
+
+// ellipsize shortens text for display only. It cuts on a rune boundary so a
+// truncated multi-byte character cannot land in the output.
+func ellipsize(s string, max int) string {
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return strings.TrimRight(string(r[:max]), " ") + "…"
+}
+
 func navClass(path, target string) string {
 	if path == target || (target != "/" && strings.HasPrefix(path, target)) {
 		return "active"

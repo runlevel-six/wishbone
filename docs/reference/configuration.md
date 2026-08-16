@@ -51,6 +51,7 @@ Login is rate limited per username (8 attempts / 15 min) and per client address
 | `WISHD_FETCH_ENABLED` | `true` | Master switch for all outbound fetching, pages and images alike. `false` hides the link-lookup UI |
 | `WISHD_FETCH_USER_AGENT` | a browser UA string | Sent with page and image requests |
 | `WISHD_FETCH_ACCEPT_LANGUAGE` | `en-US,en;q=0.9` | Sent with page and image requests |
+| `WISHD_FETCH_IMPERSONATE` | empty | `chrome` performs the TLS handshake with Chrome's ClientHello instead of Go's, for retailers that inspect it. Empty is off. An unknown value is a startup error, not a warning. See [Extraction](extraction.md#when-a-retailer-inspects-the-handshake) |
 | `EXTRACTOR_SIDECAR_URL` | empty | Base URL of the extraction sidecar, e.g. `http://127.0.0.1:8081`. Empty disables tier 5 |
 | `EXTRACTOR_SIDECAR_TIMEOUT` | `10s` | Per-request timeout for the sidecar. No retries |
 

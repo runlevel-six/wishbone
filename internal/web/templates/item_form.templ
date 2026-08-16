@@ -41,26 +41,82 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				hand-typed item is not a second-class item here.
 			</div>
 		}
+		if f.Blocked {
+			<div class="flash flash-info">
+				<strong>That shop would not let Wishbone read the page.</strong>
+				It answered { itoa(f.BlockedStatus) } — a refusal aimed at anything that is not
+				a person with a browser. Your link is fine and is saved as it is; the details
+				are the part you have to fill in. Copying the name and price across from the
+				tab you already have open is the fastest way.
+			</div>
+		}
 		if f.Suspect {
-			<div class="flash flash-warn">
+			<div id="suspect-found" class="flash flash-warn">
 				<strong>This link looks wrong.</strong>
 				<ul>
 					for _, r := range f.SuspectReason {
 						<li>{ r }</li>
 					}
 				</ul>
-				Nothing was filled in automatically. Check the link, then enter the details
-				yourself if it is still the right product.
+				if f.Found == nil {
+					Nothing was filled in automatically. Check the link, then enter the details
+					yourself if it is still the right product.
+				} else {
+					<p>
+						Nothing was filled in automatically. Here is what that page did say, so
+						you can judge it rather than take Wishbone's word for it.
+					</p>
+					@foundSummary(*f.Found)
+					// The values travel back in these rather than being fetched
+					// again, so what gets applied is what was shown above.
+					<input type="hidden" name="found_title" value={ f.Found.Title }/>
+					<input type="hidden" name="found_description" value={ f.Found.Descr }/>
+					<input type="hidden" name="found_price" value={ f.Found.Price }/>
+					<input type="hidden" name="found_currency" value={ f.Found.Currency }/>
+					<input type="hidden" name="found_image_url" value={ f.Found.ImageURL }/>
+					<input type="hidden" name="found_url" value={ f.Found.URL }/>
+					<input type="hidden" name="found_url_raw" value={ f.Found.URLRaw }/>
+					<input type="hidden" name="found_link_status" value={ f.Found.LinkStatus }/>
+					<input type="hidden" name="found_attrs" value={ f.Found.Attrs }/>
+					<input type="hidden" name="found_sources" value={ f.Found.Sources }/>
+					<div class="row">
+						<button type="button" class="button"
+							hx-post={ "/lists/" + f.ListID + "/items/preview/accept" }
+							hx-include="#suspect-found" hx-target="#item-form" hx-swap="outerHTML">
+							Use these details
+						</button>
+						if f.Found.Canonical != "" {
+							<button type="button" class="button"
+								hx-post={ "/lists/" + f.ListID + "/items/preview" }
+								hx-vals={ hxVals("url_raw", f.Found.Canonical) }
+								hx-target="#item-form" hx-swap="outerHTML" hx-indicator="#lookup-spinner">
+								Look up { f.Found.Canonical } instead
+							</button>
+						}
+					</div>
+					<p class="hint">
+						The second button changes which link the item points at. Take it when the
+						page you landed on is the same thing under a tidier address; leave it when
+						the size, color or edition might differ.
+					</p>
+				}
 			</div>
 		}
-		if f.Extracted && !f.Suspect && f.NothingFound {
+		if f.Accepted {
+			<div class="flash flash-info">
+				Filled in from a page Wishbone was unsure about, because you asked. Check every
+				field — especially the price, and anything that pins down which version of the
+				product this is.
+			</div>
+		}
+		if believedLookup(f) && f.NothingFound {
 			<div class="flash flash-info">
 				That page loaded, but it did not publish any product details Wishbone could
 				read — some big shops deliberately hide them from anything that is not a
 				browser. Fill in what you know below; the link is saved either way.
 			</div>
 		}
-		if f.Extracted && !f.Suspect && !f.NothingFound {
+		if believedLookup(f) && !f.NothingFound {
 			<div class="flash flash-ok">Filled in from the page. Change anything that looks off.</div>
 		}
 		if len(otherErrors(f.Errors)) > 0 {
@@ -165,6 +221,7 @@ templ ItemFormBody(p Page, f ItemFormData) {
 		}
 		<input type="hidden" name="url" value={ f.URL }/>
 		<input type="hidden" name="field_sources" value={ sourcesJSON(f.Sources) }/>
+		<input type="hidden" name="link_status" value={ f.LinkStatus }/>
 		<div class="row">
 			<button type="submit" class="primary">
 				if f.ItemID == "" {
@@ -176,6 +233,29 @@ templ ItemFormBody(p Page, f ItemFormData) {
 			<a class="button link" href={ templ.SafeURL("/lists/" + f.ListID) }>Cancel</a>
 		</div>
 	</form>
+}
+
+// foundSummary shows a held-back extraction without applying it.
+//
+// The picture is described, never rendered. Wishbone fetches images itself so
+// the retailer never learns who is looking (plan §5.2); pointing an <img> at
+// the retailer from the add-item form would hand over exactly that, and the
+// picture is not what the owner needs to judge the link anyway.
+templ foundSummary(fd FoundDetails) {
+	<dl class="attrs found">
+		if fd.Title != "" {
+			<div><dt>Name</dt><dd>{ fd.Title }</dd></div>
+		}
+		if fd.Price != "" {
+			<div><dt>Price</dt><dd>{ priceLabel(fd.Price, fd.Currency) }</dd></div>
+		}
+		if fd.Descr != "" {
+			<div><dt>Description</dt><dd>{ ellipsize(fd.Descr, 240) }</dd></div>
+		}
+		if fd.ImageURL != "" {
+			<div><dt>Picture</dt><dd>one was found, and will be saved with the item</dd></div>
+		}
+	</dl>
 }
 
 // CategoryFields renders the dynamic per-category inputs (plan §2.2, P3).

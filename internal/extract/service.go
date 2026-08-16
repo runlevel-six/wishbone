@@ -49,11 +49,20 @@ type Preview struct {
 	Result     *Result
 	FetchedAt  time.Time
 	LinkStatus string
+	// StatusCode and Bytes describe the response itself. They are diagnostics:
+	// when a lookup comes back empty, "what did the shop actually answer" is
+	// the first question, and it used to take a second tool to ask.
+	StatusCode int
+	Bytes      int
 }
 
 // Suspect reports whether the user must confirm before the fields are applied
 // (plan §5.4).
 func (p *Preview) Suspect() bool { return p.Result != nil && p.Result.Suspect }
+
+// Blocked reports whether the retailer refused to serve the page. Nothing was
+// learned about the link, so nothing should be said about it.
+func (p *Preview) Blocked() bool { return p.Result != nil && p.Result.Blocked }
 
 // Fetch runs the pipeline for one URL. A fetch failure is returned as an error;
 // the caller falls back to the manual path, which is never a degraded path in
@@ -76,7 +85,7 @@ func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 		return nil, err
 	}
 
-	page, err := ParseHead(bytes.NewReader(resp.Body))
+	page, err := ParseDocument(bytes.NewReader(resp.Body))
 	if err != nil {
 		return nil, err
 	}
@@ -93,5 +102,7 @@ func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 		Result:     res,
 		FetchedAt:  model.Now(),
 		LinkStatus: res.LinkStatus,
+		StatusCode: resp.StatusCode,
+		Bytes:      len(resp.Body),
 	}, nil
 }

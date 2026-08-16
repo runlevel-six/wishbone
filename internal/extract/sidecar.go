@@ -13,9 +13,10 @@ import (
 // Sidecar is tier 5: the get-product-data service running as a second
 // container in the same pod, reachable on localhost only (plan §5.5).
 //
-// Metadata-only extraction is a regression on Amazon relative to the app this
-// replaces, and Amazon is a large share of real usage — so this tier exists to
-// hold that quality line without linking a Node runtime into the binary.
+// Metadata-only extraction is a regression on large marketplaces relative to
+// the app this replaces, and those are a large share of real usage — so this
+// tier exists to hold that quality line without linking a Node runtime into
+// the binary.
 //
 // It is treated as untrusted: short timeout, no retries, and any failure
 // degrades to the manual path rather than surfacing an error.

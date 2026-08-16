@@ -42,6 +42,7 @@ until they choose a password.
 | GET | `/lists/{listID}/items/new` | Add-item form. Owner only |
 | POST | `/lists/{listID}/items` | Create an item. Owner only. `multipart/form-data` |
 | POST | `/lists/{listID}/items/preview` | htmx partial: run the extractor over a URL. Owner only |
+| POST | `/lists/{listID}/items/preview/accept` | htmx partial: apply an extraction the soft-404 guard held back, from the values the warning carried. Fetches nothing. Owner only |
 | GET | `/items/{itemID}/edit` | Edit form. Owner only |
 | POST | `/items/{itemID}` | Update an item. Owner only |
 | POST | `/items/{itemID}/delete` | Soft-delete if claimed, hard-delete if not. Owner only |

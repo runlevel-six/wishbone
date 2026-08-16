@@ -135,6 +135,7 @@ func (s *Server) routes() {
 		r.Get("/lists/{listID}/items/new", s.handleNewItemForm)
 		r.Post("/lists/{listID}/items", s.handleCreateItem)
 		r.Post("/lists/{listID}/items/preview", s.handlePreviewItem)
+		r.Post("/lists/{listID}/items/preview/accept", s.handleAcceptSuspectPreview)
 
 		r.Get("/items/{itemID}/edit", s.handleEditItemForm)
 		r.Post("/items/{itemID}", s.handleUpdateItem)

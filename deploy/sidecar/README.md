@@ -84,7 +84,7 @@ docker build -t REPLACE/wishd-extractor:latest .
 
 ```sh
 kubectl exec -it deploy/wishd -c extractor -- \
-  wget -qO- 'http://127.0.0.1:8081/extract?url=https%3A%2F%2Fwww.amazon.com%2Fdp%2FB0EXAMPLE1'
+  wget -qO- 'http://127.0.0.1:8081/extract?url=https%3A%2F%2Fwww.marketplace.example%2Fdp%2FB0EXAMPLE1'
 ```
 
 Run the §11 corpus from **inside the pod**. Bot detection is IP- and

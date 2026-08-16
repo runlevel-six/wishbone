@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  The reported case: a live product page, fetched at the address that was
+  asked for, that names a *different* product as its canonical address. Big
+  marketplaces do this to collapse every size and color of one garment onto
+  whichever listing they index. The page is real, the data is good, and it may
+  or may not describe the same purchasable thing as the link.
+-->
+<head>
+  <meta charset="utf-8">
+  <title>Merino Wool Hiking Socks, Cushioned</title>
+  <link rel="canonical" href="https://www.amazon.com/Merino-Wool-Hiking-Socks/dp/B0EXAMPLE2">
+
+  <meta property="og:type" content="product">
+  <meta property="og:title" content="Merino Wool Hiking Socks, Cushioned">
+  <meta property="og:image" content="https://m.media-amazon.example/images/I/merino-socks.jpg">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": "Merino Wool Hiking Socks, Cushioned",
+    "description": "Full-cushion merino hiking sock, lifetime guarantee.",
+    "sku": "B0EXAMPLE2",
+    "brand": { "@type": "Brand", "name": "Northwoods" },
+    "offers": {
+      "@type": "Offer",
+      "price": "26.00",
+      "priceCurrency": "USD",
+      "availability": "https://schema.org/InStock"
+    }
+  }
+  </script>
+</head>
+<body>
+  <h1>Merino Wool Hiking Socks, Cushioned</h1>
+</body>
+</html>

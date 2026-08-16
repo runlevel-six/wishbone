@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"net/http/httptrace"
 	"sort"
 	"strings"
@@ -35,6 +36,11 @@ func checkURLCmd(args []string, stdout io.Writer) error {
 	var (
 		ua      = fs.String("ua", "", "override the User-Agent")
 		timeout = fs.Duration("timeout", 15*time.Second, "overall timeout for this check")
+		// Overrides WISHD_FETCH_IMPERSONATE for one check, which is the point:
+		// trying "chrome" here answers whether turning it on for the whole
+		// deployment would buy anything, without turning it on.
+		impersonate = fs.String("impersonate", "config",
+			`TLS handshake: "off" for Go's, "chrome" for Chrome's, "config" for WISHD_FETCH_IMPERSONATE`)
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -51,6 +57,15 @@ func checkURLCmd(args []string, stdout io.Writer) error {
 	if *ua != "" {
 		cfg.FetchUserAgent = *ua
 	}
+	switch *impersonate {
+	case "config":
+	case "off":
+		cfg.FetchImpersonate = fetch.ImpersonateOff
+	case fetch.ImpersonateChrome:
+		cfg.FetchImpersonate = fetch.ImpersonateChrome
+	default:
+		return fmt.Errorf("-impersonate: %q is not off, chrome or config", *impersonate)
+	}
 
 	normalized, nerr := extract.NormalizeURL(target)
 	fmt.Fprintf(stdout, "wishd       %s\n", version)
@@ -61,11 +76,13 @@ func checkURLCmd(args []string, stdout io.Writer) error {
 	}
 	fmt.Fprintf(stdout, "normalized  %s\n", normalized)
 	fmt.Fprintf(stdout, "user-agent  %s\n", cfg.FetchUserAgent)
+	fmt.Fprintf(stdout, "tls         %s\n", either(cfg.FetchImpersonate, "go (not impersonating)"))
 	fmt.Fprintf(stdout, "sidecar     %s\n\n", either(cfg.SidecarURL, "(not configured)"))
 
 	client := fetch.New(fetch.Options{
 		UserAgent:      cfg.FetchUserAgent,
 		AcceptLanguage: cfg.FetchLang,
+		Impersonate:    cfg.FetchImpersonate,
 	})
 	sidecar := extract.NewSidecar(cfg.SidecarURL, cfg.SidecarTimeout)
 	svc := extract.NewService(client, sidecar, true)
@@ -132,7 +149,16 @@ func checkURLCmd(args []string, stdout io.Writer) error {
 
 	res := preview.Result
 	fmt.Fprintf(stdout, "RESULT: fetched, final URL %s\n", preview.URL)
+	fmt.Fprintf(stdout, "  http status  %d %s\n", preview.StatusCode, http.StatusText(preview.StatusCode))
+	fmt.Fprintf(stdout, "  body         %d bytes\n", preview.Bytes)
 	fmt.Fprintf(stdout, "  link status  %s\n", res.LinkStatus)
+	if res.Blocked {
+		fmt.Fprintln(stdout, "  REFUSED — the retailer declined to serve this request.")
+		fmt.Fprintln(stdout, "  Nothing is claimed about the link: it is presumed fine and the person")
+		fmt.Fprintln(stdout, "  fills the details in. Bot protection keys on the address block and the")
+		fmt.Fprintln(stdout, "  TLS fingerprint as much as the User-Agent, so -ua is worth one try and")
+		fmt.Fprintln(stdout, "  rarely more.")
+	}
 	if res.Suspect {
 		fmt.Fprintln(stdout, "  SUSPECT — nothing would be auto-filled:")
 		for _, r := range res.SuspectReason {

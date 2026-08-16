@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -84,6 +85,7 @@ func (s *Server) handleEditItemForm(w http.ResponseWriter, r *http.Request) {
 		Categories:   opts,
 		FetchEnabled: s.ex.Enabled(),
 		Sources:      categories.Unmarshal(it.FieldSources),
+		LinkStatus:   it.LinkStatus,
 		Errors:       map[string]string{},
 	}
 	if f.CategoryID == "" {
@@ -148,11 +150,25 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 	f.URL = preview.URL
 	f.Extracted = true
 	f.Sources = preview.Result.Sources
+	f.LinkStatus = preview.LinkStatus
 
-	if preview.Suspect() {
-		// Show what was found, fill in nothing.
+	if preview.Blocked() {
+		// The shop refused to be read. Said plainly, and not as a warning
+		// about the link: the link is fine, and telling someone to go check it
+		// wastes their time on the one part of this that was never wrong.
+		f.Blocked = true
+		f.BlockedStatus = preview.Result.BlockedStatus
+		s.log.Info("link lookup refused by the retailer",
+			slog.String("url", preview.URL),
+			slog.Int("status", preview.Result.BlockedStatus))
+	} else if preview.Suspect() {
+		// Show what was found, fill in nothing. Showing it is the point: the
+		// guard exists to stop Wishbone being confidently wrong, not to
+		// withhold what it read. The owner can apply it with one click, and
+		// then the confidence is theirs.
 		f.Suspect = true
 		f.SuspectReason = preview.Result.SuspectReason
+		f.Found = foundDetails(preview)
 	} else {
 		res := preview.Result
 		f.Title = res.Title
@@ -186,6 +202,157 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
 }
 
+// handleAcceptSuspectPreview applies an extraction the soft-404 guard held
+// back, because the owner looked at it and said to.
+//
+// The values come from the hidden fields the warning carried, not from a
+// second fetch: what gets applied has to be what was on screen. They are
+// therefore client-supplied, which costs nothing — every one of them is a form
+// default the owner is about to review and could have typed by hand. The link
+// is re-normalized rather than trusted, as everywhere else.
+func (s *Server) handleAcceptSuspectPreview(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	u := userFrom(ctx)
+	l, err := s.st.ListByID(ctx, chi.URLParam(r, "listID"))
+	if err != nil || l.OwnerID != u.ID {
+		s.renderNotFound(w, r)
+		return
+	}
+	opts, err := s.categoryOptions(ctx, nil)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+
+	raw := strings.TrimSpace(r.PostFormValue("found_url_raw"))
+	f := templates.ItemFormData{
+		ListID:       l.ID,
+		URLRaw:       raw,
+		Title:        clip(r.PostFormValue("found_title"), 200),
+		Descr:        clip(r.PostFormValue("found_description"), 4000),
+		Price:        clip(strings.TrimSpace(r.PostFormValue("found_price")), 40),
+		Currency:     clip(strings.ToUpper(strings.TrimSpace(r.PostFormValue("found_currency"))), 3),
+		ImageURL:     clip(strings.TrimSpace(r.PostFormValue("found_image_url")), 2000),
+		Quantity:     1,
+		Categories:   applyAttributeValues(opts, decodeStringMap(r.PostFormValue("found_attrs"))),
+		CategoryID:   defaultCategoryID(opts),
+		FetchEnabled: s.ex.Enabled(),
+		Sources:      decodeStringMap(r.PostFormValue("found_sources")),
+		Extracted:    true,
+		Accepted:     true,
+		// The item keeps the mark. Nothing about the page got better because
+		// the owner accepted it, and the list should still say so.
+		LinkStatus: acceptedLinkStatus(r.PostFormValue("found_link_status")),
+		Errors:     map[string]string{},
+	}
+	if f.Currency == "" {
+		f.Currency = "USD"
+	}
+	if normalized, err := extract.NormalizeURL(raw); err == nil {
+		f.URL = normalized
+	}
+	if dups, err := s.st.DuplicateItems(ctx, f.URL, u.ID, ""); err == nil {
+		f.Duplicates = s.duplicateWarnings(ctx, dups)
+	}
+	s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
+}
+
+// foundDetails packages a held-back extraction for display and for the round
+// trip back if the owner accepts it. It returns nil when there is nothing to
+// show and no alternative address to offer — an empty box under a warning
+// helps nobody.
+func foundDetails(p *extract.Preview) *templates.FoundDetails {
+	res := p.Result
+	canonical := extract.CanonicalAlternative(res.Canonical, p.URL)
+	if res.Title == "" && res.PriceCents == nil && res.Description == "" &&
+		len(res.ImageURLs) == 0 && canonical == "" {
+		return nil
+	}
+	fd := &templates.FoundDetails{
+		Title:      res.Title,
+		Descr:      res.Description,
+		Currency:   res.Currency,
+		URL:        p.URL,
+		URLRaw:     p.URLRaw,
+		LinkStatus: p.LinkStatus,
+		Attrs:      encodeStringMap(res.Attributes),
+		Sources:    encodeStringMap(res.Sources),
+		Canonical:  canonical,
+	}
+	if res.PriceCents != nil {
+		fd.Price = priceInput(res.PriceCents)
+	}
+	if len(res.ImageURLs) > 0 {
+		fd.ImageURL = res.ImageURLs[0]
+	}
+	return fd
+}
+
+// acceptedLinkStatus is what an accepted lookup leaves on the item. A page the
+// guard held back is suspect at best — accepting the values says the owner
+// judged them worth having, not that the link checked out — and a page that
+// answered with an error stays dead.
+func acceptedLinkStatus(submitted string) string {
+	if strings.TrimSpace(submitted) == model.LinkDead {
+		return model.LinkDead
+	}
+	return model.LinkSuspect
+}
+
+// linkStatusValue accepts only what a lookup can conclude, and only for a link
+// that is actually present. Anything else — a stale field left behind when the
+// link was cleared, a hand-made post — falls back to "unknown", which is what
+// an item with no lookup behind it has always been.
+func linkStatusValue(submitted, rawURL string) string {
+	if strings.TrimSpace(rawURL) == "" {
+		return model.LinkUnknown
+	}
+	switch strings.TrimSpace(submitted) {
+	case model.LinkOK:
+		return model.LinkOK
+	case model.LinkSuspect:
+		return model.LinkSuspect
+	case model.LinkDead:
+		return model.LinkDead
+	default:
+		return model.LinkUnknown
+	}
+}
+
+func encodeStringMap(m map[string]string) string {
+	if len(m) == 0 {
+		return "{}"
+	}
+	b, err := json.Marshal(m)
+	if err != nil {
+		return "{}"
+	}
+	return string(b)
+}
+
+func decodeStringMap(s string) map[string]string {
+	m := map[string]string{}
+	if s == "" {
+		return m
+	}
+	if err := json.Unmarshal([]byte(s), &m); err != nil {
+		return map[string]string{}
+	}
+	return m
+}
+
+// clip bounds a round-tripped value to what the field accepts, so a value that
+// came back oversized prefills a usable form instead of one that fails
+// validation on save.
+func clip(s string, max int) string {
+	s = strings.TrimSpace(s)
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return strings.TrimSpace(string(r[:max]))
+}
+
 func (s *Server) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := userFrom(ctx)
@@ -213,7 +380,7 @@ func (s *Server) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 		CategoryID:   in.CategoryID,
 		Attributes:   in.Attributes,
 		FieldSources: in.FieldSources,
-		LinkStatus:   model.LinkUnknown,
+		LinkStatus:   in.LinkStatus,
 	}
 	if in.PriceCents != nil {
 		it.PriceSeenAt = model.Ptr(model.TimeString(model.Now()))
@@ -366,6 +533,7 @@ type itemInput struct {
 	Attributes   string
 	FieldSources string
 	ImageURL     string
+	LinkStatus   string
 }
 
 // parseItemForm validates a submitted item, re-rendering the form on failure.
@@ -480,6 +648,7 @@ func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, i
 	in.PriceCents = cents
 	in.Attributes = attrsJSON
 	in.ImageURL = strings.TrimSpace(r.PostFormValue("image_url"))
+	in.LinkStatus = linkStatusValue(r.PostFormValue("link_status"), rawURL)
 
 	if rawURL != "" {
 		in.URLRaw = &rawURL
