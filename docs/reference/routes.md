@@ -12,9 +12,10 @@ require a CSRF token, sent either in the `csrf_token` form field or the
 |---|---|---|
 | GET | `/healthz` | Liveness |
 | GET | `/readyz` | Readiness; verifies the database is writable |
-| GET | `/static/*` | Stylesheet, htmx, the one script, favicon |
+| GET | `/static/*` | Stylesheet, htmx, the one script, icons, web manifest |
+| GET | `/sw.js` | Service worker. Served from the root because that is its scope; caches only `/static/` |
 | GET | `/login` | Sign-in form. Redirects to `/` if already signed in |
-| POST | `/login` | Rate limited per username and per address |
+| POST | `/login` | Rate limited per username and per address. Honors a `next` field, restricted to same-site paths |
 | GET | `/register/{token}` | Invite registration form; 404 if the invite is used or expired |
 | POST | `/register/{token}` | Creates the account and signs in |
 
@@ -33,6 +34,7 @@ until they choose a password.
 | POST | `/account/password` | Change password; signs out all other sessions |
 | GET | `/claims` | Everything you have claimed, across lists |
 | GET | `/category-fields` | htmx partial: dynamic fields for a category |
+| GET | `/share-target` | Receives a link from a phone share sheet (`url`, `text`, `title`). Routes to the add-item form, a list picker, or a prompt to make a list |
 | POST | `/lists` | Create a list |
 | GET | `/lists/{listID}` | View a list. 404 unless visible to you |
 | POST | `/lists/{listID}` | Rename, change visibility, replace the share list. Owner only |

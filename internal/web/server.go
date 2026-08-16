@@ -5,6 +5,7 @@ import (
 	"embed"
 	"io/fs"
 	"log/slog"
+	"mime"
 	"net/http"
 	"time"
 
@@ -34,6 +35,14 @@ type Server struct {
 	ipLimiter   *auth.Limiter
 
 	router chi.Router
+}
+
+func init() {
+	// Not in Go's built-in table, and a manifest served as text/plain is
+	// ignored by some browsers.
+	if err := mime.AddExtensionType(".webmanifest", "application/manifest+json"); err != nil {
+		panic("web: register manifest mime type: " + err.Error())
+	}
 }
 
 func NewServer(cfg *config.Config, st *store.Store, ex *extract.Service, img *imgstore.Store, log *slog.Logger) *Server {
@@ -87,6 +96,15 @@ func (s *Server) routes() {
 	}
 	r.Handle("/static/*", http.StripPrefix("/static/", staticCache(http.FileServer(http.FS(sub)))))
 
+	// The service worker must be served from the root: its scope is the
+	// directory it is served from, and one scoped to /static/ could not
+	// control the app.
+	r.Get("/sw.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		http.ServeFileFS(w, r, sub, "sw.js")
+	})
+
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireAnonymous)
 		r.Get("/login", s.handleLoginForm)
@@ -106,6 +124,7 @@ func (s *Server) routes() {
 		r.Post("/account/password", s.handleAccountPassword)
 
 		r.Get("/claims", s.handleMyClaims)
+		r.Get("/share-target", s.handleShareTarget)
 		r.Get("/category-fields", s.handleCategoryFields)
 
 		r.Post("/lists", s.handleCreateList)

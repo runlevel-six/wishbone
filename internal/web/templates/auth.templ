@@ -1,6 +1,6 @@
 package templates
 
-templ Login(p Page, username string, errMsg string) {
+templ Login(p Page, username, errMsg, next string) {
 	@Bare(p) {
 		<h2>Sign in</h2>
 		if errMsg != "" {
@@ -8,6 +8,9 @@ templ Login(p Page, username string, errMsg string) {
 		}
 		<form method="post" action="/login" class="stack">
 			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			if next != "" {
+				<input type="hidden" name="next" value={ next }/>
+			}
 			<label>
 				Username
 				<input type="text" name="username" value={ username } autocomplete="username" autofocus required/>

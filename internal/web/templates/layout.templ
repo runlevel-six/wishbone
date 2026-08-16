@@ -16,6 +16,14 @@ templ Layout(p Page) {
 			</title>
 			<link rel="stylesheet" href="/static/app.css"/>
 			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
+			<link rel="manifest" href="/static/manifest.webmanifest"/>
+			<meta name="theme-color" content="#1f6b4f"/>
+			// iOS ignores the manifest for home-screen installs and reads these
+			// instead. It also has no Web Share Target — see the phone how-to.
+			<link rel="apple-touch-icon" href="/static/apple-touch-icon.png"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-title" content="Wishbone"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 			<script src="/static/htmx.min.js" defer></script>
 			<script src="/static/app.js" defer></script>
 		</head>
@@ -59,6 +67,14 @@ templ Bare(p Page) {
 			<title>{ p.Title } &middot; { ProductName }</title>
 			<link rel="stylesheet" href="/static/app.css"/>
 			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
+			<link rel="manifest" href="/static/manifest.webmanifest"/>
+			<meta name="theme-color" content="#1f6b4f"/>
+			// iOS ignores the manifest for home-screen installs and reads these
+			// instead. It also has no Web Share Target — see the phone how-to.
+			<link rel="apple-touch-icon" href="/static/apple-touch-icon.png"/>
+			<meta name="apple-mobile-web-app-capable" content="yes"/>
+			<meta name="apple-mobile-web-app-title" content="Wishbone"/>
+			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
 		</head>
 		<body class="centered">
 			<main class="card narrow">

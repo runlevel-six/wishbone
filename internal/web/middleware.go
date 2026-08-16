@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/url"
 	"runtime/debug"
 	"strings"
 	"time"
@@ -253,12 +254,21 @@ func (s *Server) requireUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := userFrom(r.Context())
 		if u == nil {
+			// Carry the destination through sign-in, so a link shared from a
+			// phone survives an expired session instead of dumping the person
+			// on the dashboard with nothing.
+			to := "/login"
+			if r.Method == http.MethodGet {
+				if next := safeNext(r.URL.RequestURI()); next != "" && next != "/" {
+					to += "?next=" + url.QueryEscape(next)
+				}
+			}
 			if isHTMX(r) {
-				w.Header().Set("HX-Redirect", "/login")
+				w.Header().Set("HX-Redirect", to)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
-			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			http.Redirect(w, r, to, http.StatusSeeOther)
 			return
 		}
 		// An imported account must set a password before doing anything else

@@ -48,7 +48,12 @@ type harness struct {
 	sha   string
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessOpt(t, false) }
+
+// newHarnessOpt builds the server with URL fetching on or off. No test ever
+// reaches the network — with fetching enabled the tests only render pages, and
+// the guarded dialer would refuse a loopback target anyway.
+func newHarnessOpt(t *testing.T, fetchEnabled bool) *harness {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -68,8 +73,7 @@ func newHarness(t *testing.T) *harness {
 		SessionTTL:    24 * time.Hour,
 		InviteTTL:     time.Hour,
 		SecureCookies: false,
-		// Fetching is off in tests: no test may touch the network (plan §8).
-		FetchEnabled: false,
+		FetchEnabled:  fetchEnabled,
 	}
 
 	st := store.New(sqldb)
@@ -79,7 +83,7 @@ func newHarness(t *testing.T) *harness {
 		t.Fatalf("imgstore: %v", err)
 	}
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := NewServer(cfg, st, extract.NewService(client, nil, false), images, log)
+	srv := NewServer(cfg, st, extract.NewService(client, nil, fetchEnabled), images, log)
 
 	h := &harness{t: t, srv: srv, st: st, cfg: cfg}
 	h.seed()

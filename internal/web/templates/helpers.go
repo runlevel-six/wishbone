@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -79,6 +80,17 @@ func availabilityLabel(available, quantity int) string {
 		return "Available"
 	}
 	return fmt.Sprintf("%d of %d still needed", available, quantity)
+}
+
+func queryEscape(s string) string { return url.QueryEscape(s) }
+
+// lookupTrigger fires the lookup on page load when a link arrived from a share
+// sheet, and otherwise leaves the form on its normal submit trigger.
+func lookupTrigger(f ItemFormData) string {
+	if f.AutoLookup {
+		return "load, submit"
+	}
+	return "submit"
 }
 
 func onOff(b bool) string {

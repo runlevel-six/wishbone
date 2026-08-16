@@ -21,7 +21,8 @@ func routePattern(r *http.Request) string {
 }
 
 func (s *Server) handleLoginForm(w http.ResponseWriter, r *http.Request) {
-	s.render(w, r, http.StatusOK, templates.Login(s.page(w, r, "Sign in"), "", ""))
+	s.render(w, r, http.StatusOK,
+		templates.Login(s.page(w, r, "Sign in"), "", "", safeNext(r.URL.Query().Get("next"))))
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
@@ -30,12 +31,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	password := r.PostFormValue("password")
 
 	const genericErr = "That username and password did not match."
+	next := safeNext(r.PostFormValue("next"))
 
 	ip := realIPFrom(ctx)
 	if !s.ipLimiter.Allow(ip) || !s.userLimiter.Allow(strings.ToLower(username)) {
 		s.render(w, r, http.StatusTooManyRequests,
 			templates.Login(s.page(w, r, "Sign in"), username,
-				"Too many attempts. Wait a few minutes and try again."))
+				"Too many attempts. Wait a few minutes and try again.", next))
 		return
 	}
 
@@ -48,13 +50,13 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		// Spend comparable time so a missing account is not detectable.
 		auth.DummyVerify(password)
 		s.render(w, r, http.StatusUnauthorized,
-			templates.Login(s.page(w, r, "Sign in"), username, genericErr))
+			templates.Login(s.page(w, r, "Sign in"), username, genericErr, next))
 		return
 	}
 
 	if err := auth.VerifyPassword(user.PasswordHash, password); err != nil {
 		s.render(w, r, http.StatusUnauthorized,
-			templates.Login(s.page(w, r, "Sign in"), username, genericErr))
+			templates.Login(s.page(w, r, "Sign in"), username, genericErr, next))
 		return
 	}
 
@@ -68,6 +70,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if user.MustReset {
 		s.flash(w, templates.FlashWarn, "Welcome back. Please choose a new password.")
 		s.redirect(w, r, "/account")
+		return
+	}
+	if next != "" {
+		s.redirect(w, r, next)
 		return
 	}
 	s.redirect(w, r, "/")

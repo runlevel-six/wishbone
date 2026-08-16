@@ -67,14 +67,22 @@ Not implemented yet:
 - An importer for data from a previous wishlist app. The schema was written
   first, deliberately, so the old data model could not shape it; the columns it
   will need already exist.
-- PWA manifest and share-target, so items can be added from a phone's share
-  sheet.
 - A periodic link-health job. Link status is recorded when an item is created
   from a URL; nothing re-checks it on a schedule.
 - An optional local-LLM extraction tier.
 
 The optional extraction sidecar is built and licensed
 ([MIT](NOTICE)) but opt-in: the default manifests deploy without it.
+
+## On a phone
+
+Installs to the home screen on both platforms. Sharing a link into it works
+natively on Android; iPhone needs a one-time Shortcut, since iOS Safari has no
+web share target. Either way the link lands on an add-item form with the lookup
+already running. See [Add items from your phone](docs/how-to/add-from-your-phone.md).
+
+Nothing authenticated is cached offline — deliberately. See the service worker
+for why.
 
 ## Development
 

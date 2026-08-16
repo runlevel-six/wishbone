@@ -15,7 +15,7 @@ templ ItemForm(p Page, f ItemFormData) {
 		if f.FetchEnabled && f.ItemID == "" {
 			<section class="card">
 				<h2>Start from a link</h2>
-				<form class="row" hx-post={ "/lists/" + f.ListID + "/items/preview" } hx-target="#item-form" hx-swap="outerHTML" hx-indicator="#lookup-spinner">
+				<form class="row" hx-post={ "/lists/" + f.ListID + "/items/preview" } hx-target="#item-form" hx-swap="outerHTML" hx-indicator="#lookup-spinner" hx-trigger={ lookupTrigger(f) }>
 					<input type="url" name="url_raw" value={ f.URLRaw } placeholder="https://..." class="grow" autofocus/>
 					<button class="button primary" type="submit">Look it up</button>
 					<span id="lookup-spinner" class="htmx-indicator">checking…</span>

@@ -1,0 +1,24 @@
+package templates
+
+// SharePicker asks which list a shared link belongs on. Only shown to people
+// who own more than one list; with a single list the share goes straight to
+// the add-item form.
+templ SharePicker(p Page, sharedURL string, lists []ShareListOption) {
+	@Layout(p) {
+		<div class="page-head">
+			<div>
+				<h1>Add to which list?</h1>
+				<p class="muted small">{ sharedURL }</p>
+			</div>
+		</div>
+		<ul class="list-grid">
+			for _, l := range lists {
+				<li class="card list-card">
+					<a class="list-name" href={ templ.SafeURL("/lists/" + l.ID + "/items/new?url=" + queryEscape(sharedURL)) }>
+						{ l.Name }
+					</a>
+				</li>
+			}
+		</ul>
+	}
+}

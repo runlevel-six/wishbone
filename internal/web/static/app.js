@@ -44,4 +44,14 @@
 	document.addEventListener("focusin", function (ev) {
 		if (ev.target.matches("input[data-select-on-focus]")) { ev.target.select(); }
 	});
+
+	// Register the service worker. It caches only /static/, which is what makes
+	// the app installable on a phone; see sw.js for why nothing else is cached.
+	if ("serviceWorker" in navigator) {
+		window.addEventListener("load", function () {
+			navigator.serviceWorker.register("/sw.js").catch(function (err) {
+				console.warn("service worker registration failed:", err);
+			});
+		});
+	}
 })();

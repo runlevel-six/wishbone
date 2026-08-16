@@ -120,8 +120,17 @@ type ItemFormData struct {
 	FetchError   string
 	Duplicates   []DuplicateWarning
 	FetchEnabled bool
+	// AutoLookup runs the link lookup as soon as the page loads, for links
+	// arriving from a phone's share sheet.
+	AutoLookup bool
 
 	Errors map[string]string
+}
+
+// ShareListOption is one destination offered for a shared link.
+type ShareListOption struct {
+	ID   string
+	Name string
 }
 
 // ClaimedRow is one entry on the "things you've claimed" page.

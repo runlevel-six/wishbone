@@ -46,6 +46,14 @@ func (s *Server) handleNewItemForm(w http.ResponseWriter, r *http.Request) {
 		FetchEnabled: s.ex.Enabled(),
 		Errors:       map[string]string{},
 	}
+
+	// Arriving from a phone share sheet: prefill the link and run the lookup
+	// without waiting to be asked. The point of sharing is not to then tap a
+	// button.
+	if shared := strings.TrimSpace(r.URL.Query().Get("url")); shared != "" {
+		f.URLRaw = shared
+		f.AutoLookup = s.ex.Enabled()
+	}
 	s.render(w, r, http.StatusOK, templates.ItemForm(s.page(w, r, "Add an item"), f))
 }
 
