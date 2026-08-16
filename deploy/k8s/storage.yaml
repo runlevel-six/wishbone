@@ -2,10 +2,14 @@
 #
 # Two requirements, both non-negotiable:
 #
-#   * A block-mode storage class. SQLite locking over a network filesystem
-#     (NFS, CephFS, SMB, anything FUSE-backed) is a documented way to corrupt a
-#     database. Whatever class you name here must give the pod a real block
-#     device, not a shared filesystem.
+#   * A block-device-backed storage class — one that attaches a volume to a
+#     single node and puts an ordinary local filesystem on it. SQLite locking
+#     over a *shared network* filesystem (NFS, CephFS, SMB, anything
+#     FUSE-backed) is a documented way to corrupt a database.
+#
+#     Note this is about what backs the volume, not about volumeMode. Leave
+#     volumeMode at its default of Filesystem: the database is a file, and a
+#     raw block device has nowhere to put one.
 #
 #   * ReadWriteOnce, not ReadWriteOncePod. The backup sidecar mounts the same
 #     volume, and RWOP would forbid that.
@@ -25,6 +29,13 @@ spec:
 # Backups live on their own claim so a runaway backup loop fills the backup
 # volume rather than the one the application is writing to. The retention
 # prune in backup.sh is the primary defense; this is the second.
+#
+# This claim does NOT share the database's storage constraint: it only ever
+# holds VACUUM INTO output and tar archives, never a live database. A shared
+# network filesystem is fine here, and ReadWriteMany is arguably better — it
+# lets a separate job mount the backups and ship them offsite without touching
+# the application pod. Both fields are immutable once bound, so choose before
+# the first apply.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

@@ -58,6 +58,21 @@ Fixed in code, not configurable: 5s total request timeout, 2s dial timeout, 5
 redirects maximum, 64 KiB response headers, 2 MiB page bodies, 5 MiB images,
 `text/html` required for pages, `image/*` required for images.
 
+## Backup sidecar
+
+Read by `wishd backup`, which runs as a second container using the same image.
+
+| Variable | Default | Description |
+|---|---|---|
+| `BACKUP_DEST` | `/backup` | Where backups are written |
+| `BACKUP_INTERVAL` | `24h` | Time between backups. A bare integer is read as seconds |
+| `BACKUP_KEEP` | `14` | Daily backups of each kind to retain. Only files matching the automatic `app-YYYY-MM-DD.db` / `images-YYYY-MM-DD.tar.gz` names are pruned |
+
+It also reads `WISHD_DATA_DIR`, `WISHD_DB_PATH`, `WISHD_IMAGE_DIR` and
+`WISHD_LOG_LEVEL`. Every one can be overridden by a flag.
+
+A failed backup is retried in five minutes rather than a full interval later.
+
 ## Bootstrap
 
 | Variable | Default | Description |
@@ -74,7 +89,12 @@ logs a warning; nobody can sign in until they are supplied.
 | Command | Description |
 |---|---|
 | `wishd` | Serve the application |
-| `wishd hash-password` | Read a password from stdin, print an argon2id hash. For administrative password resets |
+| `wishd backup` | Periodic backup loop. Flags: `-dest -interval -keep -db -images -once -list -dump` |
+| `wishd backup -once` | Take one backup and exit; non-zero on failure |
+| `wishd backup -list` | List existing backups — the substitute for `ls` in a shell-less image |
+| `wishd backup -dump FILE` | Stream one backup to stdout — the substitute for `kubectl cp`, which needs `tar`. `latest` / `latest-images` resolve to the newest of each kind, avoiding the UTC-vs-local date trap |
+| `wishd set-password -user U` | Set a temporary password, force a change at next sign-in, sign out that account's other sessions |
+| `wishd hash-password` | Read a password from stdin, print an argon2id hash |
 | `wishd help` | Usage summary |
 
 ## Endpoints for operators

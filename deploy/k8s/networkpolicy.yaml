@@ -20,23 +20,37 @@ spec:
       app.kubernetes.io/name: wishd
   policyTypes: ["Egress"]
   egress:
-    # DNS to the cluster resolver, and nothing else inside the cluster.
-    - to:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: kube-system
-          podSelector:
-            matchLabels:
-              k8s-app: kube-dns
-      ports:
+    # DNS, by port only, to any destination.
+    #
+    # This looks lax next to naming the cluster resolver, and it is a
+    # deliberate retreat. Both tidier forms turned out to be unenforceable
+    # depending on the CNI:
+    #
+    #   * a namespaceSelector/podSelector for kube-dns only matches if the CNI
+    #     translates the Service ClusterIP to a backend pod *before* evaluating
+    #     egress policy. Cilium does that only when it replaces kube-proxy;
+    #     with kube-proxy in iptables mode the destination is still a ClusterIP
+    #     at enforcement time and the rule matches nothing.
+    #   * an ipBlock for the resolver address fails too, because Cilium does
+    #     not let CIDR rules match cluster-internal destinations.
+    #
+    # Either way the symptom is brutal to diagnose: every outbound request
+    # fails with "lookup <host>: i/o timeout" after exactly the dial timeout,
+    # while the network is otherwise healthy and a debug pod looks fine.
+    #
+    # What this gives up: a pod that can send DNS anywhere could in principle
+    # tunnel data over DNS. That is a poor trade to worry about here — the
+    # control that actually matters against SSRF is the connect-time address
+    # guard inside the application, which no CNI can misinterpret.
+    - ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
 
     # The public internet, with every private and special-purpose range carved
-    # out — including the cloud metadata address, which is the classic SSRF
-    # target even on a home cluster.
+    # out — including the link-local metadata address, which is the classic
+    # SSRF target.
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

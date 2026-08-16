@@ -8,6 +8,10 @@
 #
 # To enable: build and push the image, set it below, and uncomment the
 # `patches` entry in kustomization.yaml.
+#
+# Measured worth: on large marketplaces this recovers title, price and image
+# where the metadata tiers return only a description, at a cost of roughly two
+# seconds per lookup. On sites with real structured data it never runs.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,6 +35,15 @@ spec:
               value: "127.0.0.1"
             - name: PORT
               value: "8081"
+            # The pod securityContext runs every container as 65532, which is
+            # not the node image's own user and has no home directory.
+            - name: HOME
+              value: /tmp
+          volumeMounts:
+            # Shares the emptyDir the app already mounts; the root filesystem
+            # is read-only and node wants somewhere to write.
+            - name: tmp
+              mountPath: /tmp
           resources:
             requests:
               cpu: 50m

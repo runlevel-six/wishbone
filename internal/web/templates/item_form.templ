@@ -16,7 +16,7 @@ templ ItemForm(p Page, f ItemFormData) {
 			<section class="card">
 				<h2>Start from a link</h2>
 				<form class="row" hx-post={ "/lists/" + f.ListID + "/items/preview" } hx-target="#item-form" hx-swap="outerHTML" hx-indicator="#lookup-spinner">
-					<input type="url" name="url_raw" value={ f.URLRaw } placeholder="https://..." class="grow"/>
+					<input type="url" name="url_raw" value={ f.URLRaw } placeholder="https://..." class="grow" autofocus/>
 					<button class="button primary" type="submit">Look it up</button>
 					<span id="lookup-spinner" class="htmx-indicator">checking…</span>
 				</form>
@@ -53,7 +53,14 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				yourself if it is still the right product.
 			</div>
 		}
-		if f.Extracted && !f.Suspect {
+		if f.Extracted && !f.Suspect && f.NothingFound {
+			<div class="flash flash-info">
+				That page loaded, but it did not publish any product details Wishbone could
+				read — some big shops deliberately hide them from anything that is not a
+				browser. Fill in what you know below; the link is saved either way.
+			</div>
+		}
+		if f.Extracted && !f.Suspect && !f.NothingFound {
 			<div class="flash flash-ok">Filled in from the page. Change anything that looks off.</div>
 		}
 		if len(otherErrors(f.Errors)) > 0 {
@@ -77,7 +84,12 @@ templ ItemFormBody(p Page, f ItemFormData) {
 		}
 		<label>
 			What is it?
-			<input type="text" name="title" value={ f.Title } required maxlength="200" autofocus/>
+			// The link box above takes the cursor when it is the obvious first
+			// move. Focus falls here instead when there is no link box (editing,
+			// or lookup switched off) or once a lookup has run and the fields
+			// are worth checking.
+			<input type="text" name="title" value={ f.Title } required maxlength="200"
+				autofocus?={ f.ItemID != "" || !f.FetchEnabled || f.Extracted }/>
 			if f.Errors["title"] != "" {
 				<span class="error">{ f.Errors["title"] }</span>
 			}

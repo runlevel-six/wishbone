@@ -11,7 +11,9 @@ You need:
 - A cluster with a **block-mode** storage class. Not a network filesystem —
   see [Storage and concurrency](../explanation/storage-and-concurrency.md) for
   why this is not negotiable.
-- An ingress controller and a way to issue TLS certificates.
+- An ingress controller terminating TLS. Either a certificate you already
+  hold (a wildcard, say) or an issuer such as cert-manager — the manifests
+  assume neither.
 - A container registry the cluster can pull from.
 
 ## 1. Build and push the image
@@ -52,9 +54,18 @@ Search for `REPLACE` and set:
 |---|---|
 | `deployment.yaml` | image references, `WISHD_BASE_URL`, `WISHD_TRUSTED_PROXY_CIDRS` |
 | `storage.yaml` | the block storage class name, volume sizes |
-| `service-ingress.yaml` | hostname, TLS issuer |
+| `service-ingress.yaml` | hostname, TLS secret (see below) |
 | `networkpolicy.yaml` | your ingress controller's namespace, any extra private ranges |
 | `extractor-sidecar.yaml` | only if you are adding the optional sidecar |
+
+**TLS.** An Ingress can only reference a TLS secret in its own namespace. If
+you already terminate with a wildcard certificate, either copy that secret into
+this namespace and name it in `spec.tls`, or delete the `tls:` block and let
+the controller serve its default certificate for the host. cert-manager is
+optional: add its `cluster-issuer` annotation only if you want a per-host
+certificate issued. Nothing in the app depends on which you choose — HSTS and
+the `Secure` cookie flag both come from `WISHD_SECURE_COOKIES`, not from
+inspecting the certificate or `X-Forwarded-Proto`.
 
 `WISHD_TRUSTED_PROXY_CIDRS` decides who may set `X-Forwarded-For`. Set it to
 the range your ingress pods run in. Leaving it empty is safe — the app then

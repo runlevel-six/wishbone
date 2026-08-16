@@ -20,19 +20,26 @@ metadata:
   labels:
     app.kubernetes.io/name: wishd
   annotations:
-    cert-manager.io/cluster-issuer: REPLACE-CLUSTER-ISSUER
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
-    # HSTS on. Most controllers send this by default once TLS is configured;
-    # stated explicitly so it survives a controller-wide config change.
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
     # Item pictures are uploaded through the app.
     nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    # HSTS is sent by the app itself whenever WISHD_SECURE_COOKIES is true, so
+    # no controller snippet is needed — which is just as well, since
+    # configuration-snippet annotations are disabled by default in recent
+    # ingress-nginx releases.
+    #
+    # If you use cert-manager to issue a per-host certificate, add:
+    #   cert-manager.io/cluster-issuer: <your-issuer>
+    # If you already terminate TLS with a wildcard, you do not need it.
 spec:
   ingressClassName: nginx
+  # TLS is environment-specific. Either name a secret that exists *in this
+  # namespace* (an Ingress cannot reference one from another namespace), or
+  # delete this block entirely and let the controller serve its default
+  # certificate for this host.
   tls:
     - hosts: ["REPLACE.example.com"]
-      secretName: wishd-tls
+      secretName: REPLACE-TLS-SECRET
   rules:
     - host: REPLACE.example.com
       http:

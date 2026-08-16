@@ -30,10 +30,24 @@ func ApplySoft404Guard(res *Result, page *Page) {
 	}
 
 	// 1. og:type present and not a product.
+	//
+	// On its own this is weak evidence. Plenty of storefronts — particularly
+	// single-page ones — emit og:type "website" on every page including real
+	// product pages, and firing on that alone produces a warning over a
+	// perfectly good extraction. A guard that cries wolf gets clicked through,
+	// which costs you the case it exists for.
+	//
+	// So it only counts when the page has not also published structured
+	// product data at the address that was asked for. Structured data is much
+	// stronger evidence than an OpenGraph type: a schema.org Product node with
+	// a name and a SKU or price is a deliberate machine-readable claim, while
+	// og:type is frequently boilerplate.
 	if res.OGType != "" && res.OGType != "product" && !strings.HasPrefix(res.OGType, "product.") {
-		res.Suspect = true
-		res.SuspectReason = append(res.SuspectReason,
-			"the page describes itself as \""+res.OGType+"\", not a product")
+		if !hasStructuredProduct(res) {
+			res.Suspect = true
+			res.SuspectReason = append(res.SuspectReason,
+				"the page describes itself as \""+res.OGType+"\", not a product")
+		}
 	}
 
 	// 2. The final URL or canonical differs structurally from what was asked
@@ -73,6 +87,24 @@ func ApplySoft404Guard(res *Result, page *Page) {
 		res.LinkStatus = model.LinkSuspect
 	}
 	res.SuspectReason = dedupeStrings(res.SuspectReason)
+}
+
+// hasStructuredProduct reports whether a structured-data tier — not
+// OpenGraph — supplied the title, together with a SKU or a price. That
+// combination is a page asserting "this is a specific purchasable product",
+// which outweighs a sloppy og:type.
+//
+// The URL-shape signals below are deliberately not softened by this: if the
+// address moved, structured data on the page you landed on describes the wrong
+// product, and being confident about the wrong thing is the failure mode this
+// whole guard exists to prevent.
+func hasStructuredProduct(res *Result) bool {
+	switch res.Sources["title"] {
+	case SourceShopify, SourceJSONLD, SourceMicrodata:
+	default:
+		return false
+	}
+	return res.SKU != "" || res.PriceCents != nil
 }
 
 // ranReliableTier reports whether a tier ran that ordinarily produces a price

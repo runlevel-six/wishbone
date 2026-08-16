@@ -6,47 +6,74 @@ once a day.
 
 ## What the sidecar does
 
-[`deploy/k8s/backup-script.yaml`](../../deploy/k8s/backup-script.yaml) runs a
-loop that, every `BACKUP_INTERVAL_SECONDS` (default 24h):
+The sidecar runs the **same image as the server**, with `args: ["backup"]`.
+That is deliberate: the image is a static binary on `scratch` running as an
+unprivileged user, so there is no shell to script with, no package manager to
+install `sqlite3` from, and no root to install it as. Since the app already
+links SQLite, it issues the statement itself.
 
-1. `sqlite3 /data/app.db "VACUUM INTO '/backup/app-YYYY-MM-DD.db'"`
-2. archives `/data/images` to `/backup/images-YYYY-MM-DD.tar.gz`
-3. prunes both to the most recent `BACKUP_KEEP` (default 14)
+Every `BACKUP_INTERVAL` (default 24h) it:
 
-`VACUUM INTO` is used rather than `cp` because the database runs in WAL mode: a
-plain file copy can capture the main database without the write-ahead log that
-makes it consistent. `VACUUM INTO` is safe against a live writer and produces a
-compacted, self-contained file.
+1. writes `/backup/app-YYYY-MM-DD.db` with `VACUUM INTO`
+2. writes `/backup/images-YYYY-MM-DD.tar.gz` from the image tree
+3. prunes each kind to the most recent `BACKUP_KEEP` (default 14)
 
-The prune is not decoration. A backup loop quietly filling the volume is the
-realistic failure mode for this kind of setup, which is also why backups go to
-their own claim rather than sharing the application's.
+`VACUUM INTO` rather than a file copy, because the database runs in WAL mode: a
+plain copy can capture the main database without the write-ahead log that makes
+it consistent. `VACUUM INTO` is safe against a live writer and produces a
+compacted, self-contained file. Each file is written to `.tmp` and renamed, so
+a partially written backup never appears under a name a restore might pick up.
+
+Pruning is not housekeeping — a backup loop quietly filling its volume is the
+realistic failure mode here. Only the automatic daily files are pruned; a
+backup you took by hand and named something else is left alone.
+
+If a backup fails, the next attempt is in five minutes rather than a day. That
+matters on a fresh deployment, where the database does not exist until the
+server container has created it.
 
 ## Check that backups are actually happening
 
 ```sh
-kubectl logs deploy/wishd -c backup --tail=20
-kubectl exec deploy/wishd -c backup -- ls -lh /backup
+kubectl -n $NS logs deploy/wishd -c backup --tail=20
+kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -list
 ```
 
-You are looking for today's date and a file size that is not zero. Do this
-before you need it, not after.
+The container has no shell, so `ls` is not available — `-list` is the
+substitute. You are looking for today's date and a size that is not zero. Do
+this before you need it, not after.
 
 ## Take a backup right now
 
 ```sh
-kubectl exec deploy/wishd -c backup -- sh -c \
-  "sqlite3 /data/app.db \"VACUUM INTO '/backup/app-manual-\$(date +%F-%H%M).db'\""
+kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -once
 ```
 
 ## Copy a backup off the cluster
 
+`kubectl cp` needs `tar` inside the container, which a `scratch` image does not
+have. Stream it instead:
+
 ```sh
-kubectl cp wishd-pod:/backup/app-2026-11-01.db ./app-2026-11-01.db -c backup
+kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -dump latest > app-backup.db
+kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -dump latest-images > images.tar.gz
+```
+
+Backup file names carry **UTC** dates, so `date +%F` in a shell west of
+Greenwich names yesterday's file for part of every evening. `latest` sidesteps
+that; use `date -u +%F` if you want to name one explicitly:
+
+```sh
+kubectl -n $NS exec deploy/wishd -c backup -- \
+  /wishd backup -dump app-$(date -u +%F).db > app-$(date -u +%F).db
 ```
 
 Do this on a schedule you can live with. Backups that never leave the machine
-they are backing up are one hardware failure from being no backups at all.
+they are backing up are one hardware failure away from being no backups at all.
+
+If the backup volume is `ReadWriteMany`, a separate CronJob can mount it and
+ship files offsite without touching the application pod at all — which is the
+main argument for putting that claim on a shared filesystem.
 
 ## Verify a backup
 
@@ -54,7 +81,7 @@ A backup you have not opened is a guess:
 
 ```sh
 sqlite3 app-2026-11-01.db "PRAGMA integrity_check;"
-sqlite3 app-2026-11-01.db "SELECT COUNT(*) FROM users, lists, items;"
+sqlite3 app-2026-11-01.db "SELECT COUNT(*) FROM users;"
 ```
 
 Better still, restore it into a local instance and click around:
@@ -70,17 +97,16 @@ schema by the restore itself.
 
 ## Restore
 
-Restoring means replacing the live database, so the app must not be writing
-while you do it.
+Restoring replaces the live database, so the app must not be writing while you
+do it.
 
 ```sh
 # 1. Stop the writer.
-kubectl scale deploy/wishd --replicas=0
+kubectl -n $NS scale deploy/wishd --replicas=0
 
-# 2. Put the file in place. Use a pod that mounts the data volume — for
-#    example a temporary one, since scaling to zero removed the sidecars.
-#    Replace <claim> with wishd-data / wishd-backup.
-kubectl run wishd-restore --rm -it --image=alpine:3.21 --restart=Never \
+# 2. Put the file in place from a pod that mounts both volumes. Scaling to zero
+#    removed the sidecars, so this needs a temporary pod with a shell.
+kubectl -n $NS run wishd-restore --rm -it --image=alpine:3.21 --restart=Never \
   --overrides='{"spec":{"containers":[{"name":"wishd-restore","image":"alpine:3.21","stdin":true,"tty":true,
     "volumeMounts":[{"name":"data","mountPath":"/data"},{"name":"backup","mountPath":"/backup"}]}],
     "volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"wishd-data"}},
@@ -90,16 +116,19 @@ kubectl run wishd-restore --rm -it --image=alpine:3.21 --restart=Never \
 # inside that shell:
 #   rm -f /data/app.db /data/app.db-wal /data/app.db-shm
 #   cp /backup/app-2026-11-01.db /data/app.db
-#   tar -xzf /backup/images-2026-11-01.tar.gz -C /data
+#   tar -xzf /backup/images-2026-11-01.tar.gz -C /data/images
 #   chown -R 65532:65532 /data
 #   exit
 
 # 3. Start again.
-kubectl scale deploy/wishd --replicas=1
+kubectl -n $NS scale deploy/wishd --replicas=1
 ```
 
 Deleting the `-wal` and `-shm` files matters: leaving a stale write-ahead log
-next to a restored database is a good way to undo the restore.
+beside a restored database is a good way to undo the restore.
+
+With a `ReadWriteOnce` backup volume, that temporary pod has to land on the
+same node as the volume; `ReadWriteMany` avoids the constraint entirely.
 
 ## What restoring costs you
 

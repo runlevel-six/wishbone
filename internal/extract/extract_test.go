@@ -183,3 +183,47 @@ func TestHeadOnlyParsing(t *testing.T) {
 		t.Errorf("body JSON-LD was parsed: %v", page.JSONLD)
 	}
 }
+
+// TestOGTypeWebsiteWithStructuredProduct is a regression test from a live
+// false positive: a real product page on a single-page storefront that emits
+// og:type "website" everywhere. The guard flagged it as suspect on that alone,
+// suppressing a complete extraction and training the person to click through
+// warnings — which is how the genuine dead-link case gets ignored.
+//
+// The URL did not move and the page published a schema.org Product with a
+// name and SKU. That outweighs a boilerplate og:type.
+func TestOGTypeWebsiteWithStructuredProduct(t *testing.T) {
+	const u = "https://store.example.com/us/en/category/internet/collections/routing/products/router-ultra"
+	page := loadPage(t, "product_ogtype_website.html", u, u)
+
+	res := metadataChain().Run(context.Background(), page)
+	extract.ApplySoft404Guard(res, page)
+
+	if res.Suspect {
+		t.Errorf("a product page with structured data was flagged suspect: %v", res.SuspectReason)
+	}
+	if res.LinkStatus != model.LinkOK {
+		t.Errorf("link status = %q, want ok", res.LinkStatus)
+	}
+	if res.Title != "Mobile Router Ultra" || res.SKU != "RTR-Ultra-US" {
+		t.Errorf("extraction incomplete: title=%q sku=%q", res.Title, res.SKU)
+	}
+}
+
+// TestOGTypeWebsiteWithoutStructuredProduct is the other half: the same weak
+// signal, but with nothing corroborating it, must still be treated as suspect.
+func TestOGTypeWebsiteWithoutStructuredProduct(t *testing.T) {
+	const u = "https://shop.example/products/mystery-thing"
+	page := loadPage(t, "product_dead.html", u, u)
+
+	res := metadataChain().Run(context.Background(), page)
+	extract.ApplySoft404Guard(res, page)
+
+	if !res.Suspect {
+		t.Fatal("og:type website with no structured product data must stay suspect")
+	}
+	joined := strings.Join(res.SuspectReason, " | ")
+	if !strings.Contains(joined, "website") {
+		t.Errorf("reasons %q should cite the og:type", joined)
+	}
+}

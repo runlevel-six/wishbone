@@ -126,6 +126,12 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 
 	preview, err := s.ex.Fetch(ctx, raw)
 	if err != nil {
+		// Logged as well as shown: a lookup that fails for everyone is an
+		// operational problem (egress, DNS, a blocked user agent), and the
+		// person adding an item is the wrong place to diagnose it from.
+		s.log.Info("link lookup failed",
+			slog.String("url", raw),
+			slog.Any("err", err))
 		f.FetchError = friendlyFetchError(err)
 		s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
 		return
@@ -156,6 +162,14 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 		// picks: page metadata does not reliably carry a category signal
 		// (plan §2.2).
 		f.Categories = applyAttributeValues(opts, res.Attributes)
+
+		// A page can be fetched and parsed perfectly and still carry nothing
+		// worth having — an interstitial, or a site with no structured data.
+		// Saying "filled in from the page" over an empty form is a small lie
+		// that wastes the person's time looking for what changed.
+		if res.Title == "" && res.PriceCents == nil {
+			f.NothingFound = true
+		}
 	}
 
 	if dups, err := s.st.DuplicateItems(ctx, f.URL, u.ID, ""); err == nil {

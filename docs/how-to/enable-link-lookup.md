@@ -20,8 +20,10 @@ changes, and no outbound requests are made for pages or pictures.
 ## What the built-in tiers cover
 
 Without the sidecar, Wishbone reads Shopify product JSON, JSON-LD, microdata
-and OpenGraph. In practice that covers most independent retailers well and
-large marketplaces poorly. Details in
+and OpenGraph. Measured against a real cluster: independent retailers extract
+completely in under a second, while large marketplaces yield a description and
+nothing else. Adding the sidecar recovers title, price and image on the
+marketplace case at a cost of roughly two seconds per lookup. Full table in
 [Extraction](../reference/extraction.md).
 
 ## Add the sidecar

@@ -112,10 +112,14 @@ type ItemFormData struct {
 	Suspect       bool
 	SuspectReason []string
 	Extracted     bool
-	Sources       map[string]string
-	FetchError    string
-	Duplicates    []DuplicateWarning
-	FetchEnabled  bool
+	// NothingFound marks a page that was read successfully but carried no
+	// usable product details — common on marketplaces that serve an
+	// interstitial to non-browser clients.
+	NothingFound bool
+	Sources      map[string]string
+	FetchError   string
+	Duplicates   []DuplicateWarning
+	FetchEnabled bool
 
 	Errors map[string]string
 }

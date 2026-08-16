@@ -11,6 +11,13 @@ coverage.out
 *.db-wal
 *.db-shm
 
+# Local kustomize overlay: registry, hostname, storage class and CIDRs are
+# environment-specific and stay out of the published tree. It lives beside the
+# base rather than inside it — kustomize rejects a base directory that contains
+# its own overlay.
+/deploy/local/
+/deploy/k8s/local/
+
 # The implementation plan is a private handoff document: it describes the
 # hosting environment in detail and is not part of the published project.
 # Remove this line if you decide otherwise.

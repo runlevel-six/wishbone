@@ -23,24 +23,62 @@ import (
 	"wishd/internal/web"
 )
 
+// version is stamped at build time (see the Makefile and Dockerfile). It is
+// logged at startup and printed by `wishd version` so that "which build is
+// actually running?" is never a guess — an unanswered version question has
+// already cost more debugging time here than the bugs did.
+var version = "dev"
+
+const usage = `usage: wishd [command]
+
+With no command, wishd serves Wishbone. Configuration comes from the
+environment; see docs/reference/configuration.md.
+
+Commands:
+  backup          Periodically copy the database and images to a backup volume.
+                  Flags: -dest -interval -keep -once -db -images
+  check-url       Run one URL through the real extraction pipeline and report
+                  each phase: DNS, connect, TLS, and what was extracted.
+  set-password    Set a temporary password for one account and force a change
+                  at next sign-in. Flags: -user -db -no-force-reset
+  hash-password   Print an argon2id hash for a password read from stdin.
+  version         Print the build version.
+  help            This text.
+`
+
 func main() {
-	// One subcommand, for the locked-out-family-member case. Everything else
-	// is the server.
+	// A few subcommands share the binary. They exist because the image is a
+	// static binary on scratch: there is no shell in the container to run
+	// sqlite3 or a backup script from, so anything an operator needs to do has
+	// to be something the binary itself can do.
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "hash-password":
-			if err := hashPasswordCmd(os.Stdin, os.Stdout); err != nil {
+		fail := func(err error) {
+			if err != nil {
 				fmt.Fprintln(os.Stderr, "wishd:", err)
 				os.Exit(1)
 			}
+		}
+		switch os.Args[1] {
+		case "backup":
+			fail(backupCmd(os.Args[2:]))
+			return
+		case "check-url":
+			fail(checkURLCmd(os.Args[2:], os.Stdout))
+			return
+		case "set-password":
+			fail(setPasswordCmd(os.Args[2:], os.Stdin, os.Stdout))
+			return
+		case "hash-password":
+			fail(hashPasswordCmd(os.Stdin, os.Stdout))
+			return
+		case "version", "--version":
+			fmt.Println(version)
 			return
 		case "-h", "--help", "help":
-			fmt.Fprintln(os.Stderr, "usage: wishd [hash-password]\n\n"+
-				"With no arguments, wishd serves Wishbone. Configuration is read from\n"+
-				"the environment; see docs/reference/configuration.md.")
+			fmt.Fprint(os.Stderr, usage)
 			return
 		default:
-			fmt.Fprintf(os.Stderr, "wishd: unknown command %q\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "wishd: unknown command %q\n\n%s", os.Args[1], usage)
 			os.Exit(2)
 		}
 	}
@@ -100,6 +138,7 @@ func run() error {
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("listening",
+			slog.String("version", version),
 			slog.String("addr", cfg.Addr),
 			slog.String("db", cfg.DBPath),
 			slog.Bool("fetch", cfg.FetchEnabled),

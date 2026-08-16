@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <!--
+    A real product page from a single-page storefront that emits
+    og:type "website" on every route, including product routes. Taken from a
+    live false positive: the soft-404 guard flagged this as suspect on the
+    og:type alone, over an otherwise perfect extraction, with no redirect and
+    a complete schema.org Product node right there in the head.
+  -->
+  <title>Mobile Router Ultra - Ubiquiti Store</title>
+  <link rel="canonical" href="https://store.example.com/us/en/category/internet/collections/routing/products/router-ultra">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Mobile Router Ultra">
+  <meta property="og:image" content="https://cdn.example.com/router-ultra.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Mobile Router Ultra",
+    "description": "A compact cellular router for temporary sites.",
+    "sku": "RTR-Ultra-US",
+    "brand": { "@type": "Brand", "name": "Example Networks" },
+    "image": ["https://cdn.example.com/router-ultra.png"]
+  }
+  </script>
+</head>
+<body></body>
+</html>

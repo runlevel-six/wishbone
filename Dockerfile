@@ -14,11 +14,15 @@ RUN go install github.com/a-h/templ/cmd/templ@v0.3.1020
 COPY go.mod go.sum ./
 RUN go mod download
 
+# Stamped into the binary so `wishd version`, the startup log and check-url all
+# report which build is running.
+ARG VERSION=dev
+
 COPY . .
 RUN templ generate
 RUN CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
-      -ldflags="-s -w" \
+      -ldflags="-s -w -X main.version=${VERSION}" \
       -o /out/wishd ./cmd/wishd
 
 FROM scratch

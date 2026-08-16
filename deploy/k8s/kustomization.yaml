@@ -7,7 +7,6 @@ commonLabels:
 
 resources:
   - storage.yaml
-  - backup-script.yaml
   - deployment.yaml
   - service-ingress.yaml
   - networkpolicy.yaml

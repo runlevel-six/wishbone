@@ -42,37 +42,36 @@ Normally people change their own password at **Account**, which requires the
 old one.
 
 For someone genuinely locked out there is no email to send a reset link to, so
-recovery is a two-step manual job: mint a temporary password hash, then set it
-along with `must_reset`, which makes the app demand a new password at their
-next sign-in.
+an administrator sets a temporary password for them. The app does this itself —
+there is no shell or `sqlite3` in the image to do it by hand:
 
 ```sh
-# 1. Generate a hash. The password is typed at the prompt, not passed as an
-#    argument, so it stays out of shell history and the process table.
-kubectl exec -it deploy/wishd -c wishd -- /wishd hash-password
-
-# 2. Apply it. The backup sidecar is used here only because it is the container
-#    with a shell and sqlite3 — the application image has neither.
-kubectl exec -it deploy/wishd -c backup -- sqlite3 /data/app.db \
-  "UPDATE users SET password_hash = '<hash>', must_reset = 1 WHERE username = 'sam';"
+kubectl -n $NS exec -it deploy/wishd -c wishd -- /wishd set-password -user sam
 ```
 
-Tell them the temporary password out of band. At sign-in they will be sent
-straight to **Account** and cannot go anywhere else until they set their own.
+It prompts for the password on stderr (so it stays out of shell history and the
+process table), sets `must_reset`, and signs out that account's other sessions.
+Tell them the temporary password out of band; at sign-in they are sent straight
+to **Account** and cannot go anywhere else until they choose their own.
 
-Locally the same thing is simply:
+Locally the same thing is:
 
 ```sh
-go run ./cmd/wishd hash-password
+go run ./cmd/wishd set-password -user sam -db ./tmp/app.db
 ```
+
+`wishd hash-password` still exists if you would rather produce a hash and apply
+the `UPDATE` yourself.
 
 ## Remove someone
 
-Deleting a user cascades to their lists, items and claims:
+Deleting a user cascades to their lists, items and claims. There is no
+delete-user command yet, so this one still needs a shell: use a temporary pod
+that mounts the data volume — see the restore procedure in
+[Back up and restore](back-up-and-restore.md) for the pod spec — and run:
 
 ```sh
-kubectl exec -it deploy/wishd -c backup -- \
-  sqlite3 /data/app.db "DELETE FROM users WHERE username = 'sam';"
+sqlite3 /data/app.db "DELETE FROM users WHERE username = 'sam';"
 ```
 
 Take a [backup](back-up-and-restore.md) first. Their claims on *other* people's

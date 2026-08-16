@@ -104,32 +104,43 @@ spec:
             capabilities:
               drop: ["ALL"]
 
-        # Backup sidecar. VACUUM INTO is safe against a live
-        # writer; `cp` of a WAL-mode database is not.
+        # Backup sidecar: the same image, running the backup subcommand.
+        #
+        # It is the same binary because the image is a static binary on
+        # scratch with no shell and no package manager, running as an
+        # unprivileged user — a shell script here could not install sqlite3,
+        # and would fail silently once a day. The app already links SQLite, so
+        # it issues VACUUM INTO itself, which is safe against the live writer
+        # in the container next door. A plain copy of a WAL-mode database is
+        # not.
         - name: backup
-          image: alpine:3.21
-          command: ["/bin/sh", "/scripts/backup.sh"]
+          image: REPLACE/wishd:latest
+          imagePullPolicy: IfNotPresent
+          args: ["backup"]
           env:
-            - name: BACKUP_INTERVAL_SECONDS
-              value: "86400"
+            - name: WISHD_DATA_DIR
+              value: /data
+            - name: BACKUP_DEST
+              value: /backup
+            - name: BACKUP_INTERVAL
+              value: "24h"
             - name: BACKUP_KEEP
               value: "14"
           volumeMounts:
             - name: data
               mountPath: /data
+              readOnly: true
             - name: backup
               mountPath: /backup
-            - name: scripts
-              mountPath: /scripts
-              readOnly: true
           resources:
             requests:
               cpu: 10m
               memory: 32Mi
             limits:
-              memory: 128Mi
+              memory: 256Mi
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
 
@@ -143,7 +154,3 @@ spec:
         - name: backup
           persistentVolumeClaim:
             claimName: wishd-backup
-        - name: scripts
-          configMap:
-            name: wishd-backup-script
-            defaultMode: 0555

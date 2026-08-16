@@ -77,12 +77,16 @@ The result is marked **suspect** if any of these hold:
 
 | Signal | Condition |
 |---|---|
-| Wrong type | `og:type` is present and is not `product` (or `product.*`) |
+| Wrong type | `og:type` is present and is not `product` (or `product.*`) — **and** no structured-data tier supplied the title together with a SKU or price. Plenty of storefronts emit `og:type: website` on real product pages, so on its own this signal produces false positives; a schema.org `Product` node at the requested address outweighs it |
 | Redirected away | the requested path's identifying segment is absent from the final URL's path |
 | Canonical disagrees | `<link rel=canonical>` also lacks that segment |
 | Shape changed | a product-shaped path (`/products/`, `/product/`, `/dp/`) resolved to one that is not |
 | Nothing found | no price and no SKU, on a page where a tier that normally supplies them ran and produced the title |
 | Error status | HTTP ≥ 400 — marked `dead` rather than `suspect` |
+
+The URL-shape signals are deliberately *not* softened the same way: if the
+address moved, structured data on the page you landed on describes the wrong
+product, which is exactly the failure this guard exists to prevent.
 
 "Identifying segment" is the last meaningful path segment, ignoring Amazon's
 `ref=` crumbs, and is matched as a path component. That is why a redirect from
@@ -125,6 +129,26 @@ The sidecar must bind loopback only. Reference implementation and rationale:
 [`deploy/sidecar/`](../../deploy/sidecar). It wraps `get-product-name` (MIT),
 whose own output is `{ name, price, image }` with the price as free text; the
 shim passes that through and the Go side parses what it can.
+
+## Measured behavior
+
+Results from a real cluster with a datacenter IP address, which is the only
+setting that counts — bot detection keys on source address and on the client's
+TLS and header fingerprint, so a laptop tells you nothing.
+
+| Site shape | Without the sidecar | With the sidecar |
+|---|---|---|
+| Shopify storefront | Full success in <1s: title, price, currency, SKU, brand, all images. Tier 1 wins most fields, OpenGraph supplies the currency Shopify's JSON omits | unchanged — tier 5 is skipped, having nothing to add |
+| Large marketplace (Amazon) | Description only. The page loads and parses, but carries no product metadata for non-browser clients | Title, price and image recovered; description still from OpenGraph. Adds ~2.3s |
+| Dead product link | Correctly flagged `suspect` on three independent signals, nothing auto-filled | unchanged |
+| Single-page storefront with `og:type: website` on product pages | Title, SKU, brand and image from JSON-LD; **no price**, because the storefront renders it client-side and no server-side extractor can see it. Earlier releases also flagged these pages suspect on the og:type alone — a false positive fixed by requiring corroboration | unchanged |
+
+The marketplace row is the entire argument for the sidecar, and it is a
+regression against the app Wishbone replaces if you skip it.
+
+Two things worth re-testing if extraction ever seems to degrade: whether the
+site now serves an interstitial to the configured User-Agent, and whether the
+page's structured data moved below `</head>`.
 
 ## Testing extraction
 
