@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 const chromeUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
@@ -123,14 +123,14 @@ func TestImageRequestLooksLikeASubresource(t *testing.T) {
 // its User-Agent makes. Configure a bot and you get a bot's request, not a
 // browser costume over a name that gives it away anyway.
 func TestHonestUserAgentSendsHonestHeaders(t *testing.T) {
-	h := captureHeaders(t, "wishd/1.0", "text/html", "text/html")
+	h := captureHeaders(t, "wishbone/1.0", "text/html", "text/html")
 
 	for _, k := range []string{"sec-ch-ua", "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Upgrade-Insecure-Requests"} {
 		if v := h.Get(k); v != "" {
 			t.Errorf("%s = %q; a bot User-Agent should not carry browser headers", k, v)
 		}
 	}
-	if h.Get("User-Agent") != "wishd/1.0" {
+	if h.Get("User-Agent") != "wishbone/1.0" {
 		t.Errorf("User-Agent = %q", h.Get("User-Agent"))
 	}
 	// Including the Accept it was asked for: an honest client says what it

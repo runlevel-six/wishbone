@@ -13,7 +13,7 @@ import (
 func NewToken() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
-		panic("wishd: crypto/rand failed: " + err.Error())
+		panic("wishbone: crypto/rand failed: " + err.Error())
 	}
 	return base64.RawURLEncoding.EncodeToString(b)
 }

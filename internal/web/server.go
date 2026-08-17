@@ -12,12 +12,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"wishd/internal/auth"
-	"wishd/internal/config"
-	"wishd/internal/extract"
-	"wishd/internal/imgstore"
-	"wishd/internal/store"
-	"wishd/internal/view"
+	"wishbone/internal/auth"
+	"wishbone/internal/config"
+	"wishbone/internal/extract"
+	"wishbone/internal/imgstore"
+	"wishbone/internal/store"
+	"wishbone/internal/view"
 )
 
 //go:embed static

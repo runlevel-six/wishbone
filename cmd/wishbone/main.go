@@ -1,4 +1,4 @@
-// Command wishd serves Wishbone, a self-hosted family wishlist.
+// Command wishbone serves Wishbone, a self-hosted family wishlist.
 package main
 
 import (
@@ -12,26 +12,26 @@ import (
 	"syscall"
 	"time"
 
-	"wishd/internal/auth"
-	"wishd/internal/config"
-	"wishd/internal/db"
-	"wishd/internal/extract"
-	"wishd/internal/fetch"
-	"wishd/internal/imgstore"
-	"wishd/internal/model"
-	"wishd/internal/store"
-	"wishd/internal/web"
+	"wishbone/internal/auth"
+	"wishbone/internal/config"
+	"wishbone/internal/db"
+	"wishbone/internal/extract"
+	"wishbone/internal/fetch"
+	"wishbone/internal/imgstore"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
+	"wishbone/internal/web"
 )
 
 // version is stamped at build time (see the Makefile and Dockerfile). It is
-// logged at startup and printed by `wishd version` so that "which build is
+// logged at startup and printed by `wishbone version` so that "which build is
 // actually running?" is never a guess — an unanswered version question has
 // already cost more debugging time here than the bugs did.
 var version = "dev"
 
-const usage = `usage: wishd [command]
+const usage = `usage: wishbone [command]
 
-With no command, wishd serves Wishbone. Configuration comes from the
+With no command, wishbone serves Wishbone. Configuration comes from the
 environment; see docs/reference/configuration.md.
 
 Commands:
@@ -54,7 +54,7 @@ func main() {
 	if len(os.Args) > 1 {
 		fail := func(err error) {
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "wishd:", err)
+				fmt.Fprintln(os.Stderr, "wishbone:", err)
 				os.Exit(1)
 			}
 		}
@@ -78,13 +78,13 @@ func main() {
 			fmt.Fprint(os.Stderr, usage)
 			return
 		default:
-			fmt.Fprintf(os.Stderr, "wishd: unknown command %q\n\n%s", os.Args[1], usage)
+			fmt.Fprintf(os.Stderr, "wishbone: unknown command %q\n\n%s", os.Args[1], usage)
 			os.Exit(2)
 		}
 	}
 
 	if err := run(); err != nil {
-		fmt.Fprintln(os.Stderr, "wishd:", err)
+		fmt.Fprintln(os.Stderr, "wishbone:", err)
 		os.Exit(1)
 	}
 }
@@ -150,7 +150,7 @@ func run() error {
 	}()
 
 	if cfg.SecretIsEphemeral {
-		log.Warn("WISHD_SECRET_KEY is unset; a random key was generated for this process")
+		log.Warn("WISHBONE_SECRET_KEY is unset; a random key was generated for this process")
 	}
 
 	select {
@@ -192,11 +192,11 @@ func bootstrapAdmin(ctx context.Context, st *store.Store, cfg *config.Config, lo
 		return nil
 	}
 	if cfg.BootstrapAdmin == "" || cfg.BootstrapAdminPassword == "" {
-		log.Warn("no users yet: set WISHD_BOOTSTRAP_ADMIN and WISHD_BOOTSTRAP_ADMIN_PASSWORD to create the first account")
+		log.Warn("no users yet: set WISHBONE_BOOTSTRAP_ADMIN and WISHBONE_BOOTSTRAP_ADMIN_PASSWORD to create the first account")
 		return nil
 	}
 	if len(cfg.BootstrapAdminPassword) < 10 {
-		return errors.New("WISHD_BOOTSTRAP_ADMIN_PASSWORD must be at least 10 characters")
+		return errors.New("WISHBONE_BOOTSTRAP_ADMIN_PASSWORD must be at least 10 characters")
 	}
 	hash, err := auth.HashPassword(cfg.BootstrapAdminPassword)
 	if err != nil {

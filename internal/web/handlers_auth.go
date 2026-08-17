@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"wishd/internal/auth"
-	"wishd/internal/model"
-	"wishd/internal/web/templates"
+	"wishbone/internal/auth"
+	"wishbone/internal/model"
+	"wishbone/internal/web/templates"
 )
 
 func routePattern(r *http.Request) string {

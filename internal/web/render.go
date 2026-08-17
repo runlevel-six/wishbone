@@ -10,8 +10,8 @@ import (
 
 	"github.com/a-h/templ"
 
-	"wishd/internal/model"
-	"wishd/internal/web/templates"
+	"wishbone/internal/model"
+	"wishbone/internal/web/templates"
 )
 
 // page assembles the per-request chrome, consuming any pending flash.

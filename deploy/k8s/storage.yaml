@@ -13,12 +13,33 @@
 #
 #   * ReadWriteOnce, not ReadWriteOncePod. The backup sidecar mounts the same
 #     volume, and RWOP would forbid that.
+#
+# Upgrading an instance whose claims were created under other names: do not edit
+# the names here. A claim cannot be renamed in place, and applying a different
+# name creates a new empty claim and orphans the bound volume holding the
+# database. Pin the existing names from your own overlay instead. It has to be a
+# JSON patch, because a strategic merge patch finds its target *by*
+# metadata.name and so cannot change it:
+#
+#   patches:
+#     - target:
+#         kind: PersistentVolumeClaim
+#         name: wishbone-data
+#       patch: |-
+#         - op: replace
+#           path: /metadata/name
+#           value: your-existing-claim
+#
+# kustomize rewrites the Deployment's claimName references to match, so nothing
+# else needs patching. Put any strategic merge patch for these claims (a storage
+# class, a size) *before* the rename in the patches list, so it still matches by
+# the name used here.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wishd-data
+  name: wishbone-data
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: REPLACE-BLOCK-STORAGE-CLASS
@@ -39,9 +60,9 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: wishd-backup
+  name: wishbone-backup
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
 spec:
   accessModes: ["ReadWriteOnce"]
   storageClassName: REPLACE-BLOCK-STORAGE-CLASS

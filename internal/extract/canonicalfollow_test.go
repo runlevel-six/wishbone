@@ -8,8 +8,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"wishd/internal/extract"
-	"wishd/internal/fetch"
+	"wishbone/internal/extract"
+	"wishbone/internal/fetch"
 )
 
 // The two renderings a real department store serves for one garment. The legacy

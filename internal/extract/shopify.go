@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/net/html"
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 // Shopify is tier 1: one adapter that covers a large share of independent

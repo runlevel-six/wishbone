@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/auth"
+	"wishbone/internal/auth"
 )
 
 func TestPasswordHashRoundTrip(t *testing.T) {

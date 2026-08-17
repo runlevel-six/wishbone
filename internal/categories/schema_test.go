@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"wishd/internal/categories"
+	"wishbone/internal/categories"
 )
 
 const clothingSchema = `[

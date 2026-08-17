@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/extract"
+	"wishbone/internal/extract"
 )
 
 // sidecarStub serves the contract documented in deploy/sidecar/README.md.

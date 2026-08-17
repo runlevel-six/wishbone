@@ -77,13 +77,13 @@ binary in any case.
 
 ```sh
 cd deploy/sidecar/wrapper
-docker build -t REPLACE/wishd-extractor:latest .
+docker build -t REPLACE/wishbone-extractor:latest .
 ```
 
 ## Checking it by hand
 
 ```sh
-kubectl exec -it deploy/wishd -c extractor -- \
+kubectl exec -it deploy/wishbone -c extractor -- \
   wget -qO- 'http://127.0.0.1:8081/extract?url=https%3A%2F%2Fwww.marketplace.example%2Fdp%2FB0EXAMPLE1'
 ```
 

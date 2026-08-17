@@ -1,5 +1,5 @@
 TEMPL_VERSION := v0.3.1020
-IMAGE ?= wishd:latest
+IMAGE ?= wishbone:latest
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
@@ -30,16 +30,16 @@ generate: $(TEMPL) ## Compile .templ files to Go
 
 .PHONY: build
 build: generate ## Build the static binary
-	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/wishd ./cmd/wishd
+	CGO_ENABLED=0 go build -trimpath -ldflags="$(LDFLAGS)" -o bin/wishbone ./cmd/wishbone
 
 .PHONY: run
 run: generate ## Run locally against ./tmp (http, no TLS)
-	WISHD_ADDR=127.0.0.1:8080 \
-	WISHD_DATA_DIR=./tmp \
-	WISHD_SECURE_COOKIES=false \
-	WISHD_BOOTSTRAP_ADMIN=$${USER:-admin} \
-	WISHD_BOOTSTRAP_ADMIN_PASSWORD=$${WISHD_DEV_PASSWORD:-changemechangeme} \
-	go run ./cmd/wishd
+	WISHBONE_ADDR=127.0.0.1:8080 \
+	WISHBONE_DATA_DIR=./tmp \
+	WISHBONE_SECURE_COOKIES=false \
+	WISHBONE_BOOTSTRAP_ADMIN=$${USER:-admin} \
+	WISHBONE_BOOTSTRAP_ADMIN_PASSWORD=$${WISHBONE_DEV_PASSWORD:-changemechangeme} \
+	go run ./cmd/wishbone
 
 .PHONY: test
 test: generate ## Run the whole test suite

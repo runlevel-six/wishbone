@@ -15,12 +15,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: wishd
+  name: wishbone
 spec:
   template:
     spec:
       containers:
-        - name: wishd
+        - name: wishbone
           env:
             - name: EXTRACTOR_SIDECAR_URL
               value: http://127.0.0.1:8081
@@ -28,7 +28,7 @@ spec:
         # Listens on loopback only, on purpose: it has no authentication and
         # will fetch any URL handed to it. Do not give it a Service.
         - name: extractor
-          image: REPLACE/wishd-extractor:latest
+          image: REPLACE/wishbone-extractor:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: HOST

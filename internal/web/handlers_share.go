@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"wishd/internal/web/templates"
+	"wishbone/internal/web/templates"
 )
 
 // handleShareTarget receives a link shared from a phone.

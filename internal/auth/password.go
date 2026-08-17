@@ -84,7 +84,7 @@ func decodeHash(encoded string) (p Params, salt, key []byte, err error) {
 // DummyVerify burns a comparable amount of CPU on a login attempt for an
 // unknown username, so response timing does not enumerate accounts.
 func DummyVerify(password string) {
-	salt := []byte("wishd-timing-pad")
+	salt := []byte("wishbone-timing-pad")
 	argon2.IDKey([]byte(password), salt, DefaultParams.Time, DefaultParams.Memory,
 		DefaultParams.Threads, DefaultParams.KeyLen)
 }

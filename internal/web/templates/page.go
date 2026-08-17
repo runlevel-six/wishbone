@@ -1,11 +1,11 @@
 // Package templates holds the templ components and the small structs they
-// render. User-facing copy says "Wishbone"; everything internal says wishd
+// render. User-facing copy says "Wishbone"; everything internal says wishbone
 // (plan §1).
 package templates
 
 import (
-	"wishd/internal/model"
-	"wishd/internal/view"
+	"wishbone/internal/model"
+	"wishbone/internal/view"
 )
 
 // ProductName is the name the family says out loud.

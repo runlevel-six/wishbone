@@ -12,14 +12,14 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/auth"
-	"wishd/internal/config"
-	"wishd/internal/db"
-	"wishd/internal/extract"
-	"wishd/internal/fetch"
-	"wishd/internal/imgstore"
-	"wishd/internal/model"
-	"wishd/internal/store"
+	"wishbone/internal/auth"
+	"wishbone/internal/config"
+	"wishbone/internal/db"
+	"wishbone/internal/extract"
+	"wishbone/internal/fetch"
+	"wishbone/internal/imgstore"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
 )
 
 // The strings below are canaries. None of them may ever appear in a response

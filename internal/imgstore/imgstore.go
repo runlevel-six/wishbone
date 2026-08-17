@@ -25,7 +25,7 @@ import (
 	xdraw "golang.org/x/image/draw"
 	_ "golang.org/x/image/webp" // decode-only: many retailers serve webp now
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 // MaxImageBytes caps an image download (plan §6).

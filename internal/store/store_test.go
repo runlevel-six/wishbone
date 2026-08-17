@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"wishd/internal/db"
-	"wishd/internal/model"
-	"wishd/internal/store"
+	"wishbone/internal/db"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
 )
 
 // newStore opens a real SQLite database in a temp dir. The tests exercise the

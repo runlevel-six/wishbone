@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 // ApplySoft404Guard runs after the chain, over whatever it produced (plan §5.4).

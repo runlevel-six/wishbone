@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/model"
-	"wishd/internal/web/templates"
+	"wishbone/internal/model"
+	"wishbone/internal/web/templates"
 )
 
 // suspectFound is the set of hidden fields the "This link looks wrong" warning

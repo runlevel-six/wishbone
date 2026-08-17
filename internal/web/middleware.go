@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"wishd/internal/auth"
-	"wishd/internal/model"
+	"wishbone/internal/auth"
+	"wishbone/internal/model"
 )
 
 type ctxKey int
@@ -25,9 +25,9 @@ const (
 )
 
 const (
-	sessionCookie = "wishd_session"
-	csrfCookie    = "wishd_csrf"
-	flashCookie   = "wishd_flash"
+	sessionCookie = "wishbone_session"
+	csrfCookie    = "wishbone_csrf"
+	flashCookie   = "wishbone_flash"
 	csrfHeader    = "X-CSRF-Token"
 	csrfField     = "csrf_token"
 )

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/imgstore"
+	"wishbone/internal/imgstore"
 )
 
 func newStore(t *testing.T) *imgstore.Store {

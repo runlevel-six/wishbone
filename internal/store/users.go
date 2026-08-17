@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 const userCols = `id, username, display_name, password_hash, is_admin, must_reset, created_at, legacy_id`

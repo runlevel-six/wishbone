@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 const listCols = `id, owner_id, name, visibility, created_at, updated_at`

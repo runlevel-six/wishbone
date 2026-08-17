@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/extract"
-	"wishd/internal/model"
+	"wishbone/internal/extract"
+	"wishbone/internal/model"
 )
 
 // Golden-file tests over saved HTML. No test in this package touches the

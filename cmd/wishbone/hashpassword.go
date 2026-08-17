@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"wishd/internal/auth"
+	"wishbone/internal/auth"
 )
 
 // hashPasswordCmd prints an argon2id hash for a password read from stdin.
@@ -18,7 +18,7 @@ import (
 // pairs this with a one-line UPDATE and must_reset = 1, so the person is
 // forced to choose their own password at next sign-in.
 //
-//	wishd hash-password
+//	wishbone hash-password
 //	<type the temporary password, press enter>
 //
 // The password is read from stdin rather than taken as an argument so it does

@@ -13,7 +13,7 @@ import (
 
 	_ "modernc.org/sqlite"
 
-	"wishd/internal/auth"
+	"wishbone/internal/auth"
 )
 
 // setPasswordCmd sets a temporary password for one account and forces a change
@@ -23,7 +23,7 @@ import (
 // self-service reset, and the image has no shell to run sqlite3 from — so the
 // binary does the whole job:
 //
-//	wishd set-password -user sam
+//	wishbone set-password -user sam
 //
 // It writes to the live database, which is safe: SQLite is in WAL mode and the
 // server tolerates a second writer. must_reset is set so the temporary
@@ -32,7 +32,7 @@ func setPasswordCmd(args []string, stdin io.Reader, stdout io.Writer) error {
 	fs := flag.NewFlagSet("set-password", flag.ContinueOnError)
 	var (
 		username = fs.String("user", "", "username to reset (required)")
-		dbPath   = fs.String("db", env("WISHD_DB_PATH", filepath.Join(env("WISHD_DATA_DIR", "/data"), "app.db")), "database file")
+		dbPath   = fs.String("db", env("WISHBONE_DB_PATH", filepath.Join(env("WISHBONE_DATA_DIR", "/data"), "app.db")), "database file")
 		noReset  = fs.Bool("no-force-reset", false, "do not require a password change at next sign-in")
 	)
 	if err := fs.Parse(args); err != nil {

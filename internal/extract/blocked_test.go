@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/extract"
-	"wishd/internal/model"
+	"wishbone/internal/extract"
+	"wishbone/internal/model"
 )
 
 // TestRefusedRequestIsNotABadLink covers what some retailers actually do:

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 const itemCols = `id, list_id, category_id, title, url, url_raw, description, notes,

@@ -1,9 +1,9 @@
-# wishd — Wishbone
+# wishbone — Wishbone
 
 A self-hosted wishlist app for a small, closed group of people who buy each
 other presents. Everyone has an account; nothing is public.
 
-The repo, module, binary and Kubernetes objects are all `wishd`. Everything a
+The repo, module, binary and Kubernetes objects are all `wishbone`. Everything a
 person reads in the app says **Wishbone**.
 
 ## What it does
@@ -22,7 +22,7 @@ person reads in the app says **Wishbone**.
 
 ```sh
 make tools
-WISHD_DEV_PASSWORD=localdevpassword make run
+WISHBONE_DEV_PASSWORD=localdevpassword make run
 ```
 
 Then follow [Your first list and first

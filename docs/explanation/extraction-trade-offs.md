@@ -68,7 +68,7 @@ buy a few more sites for a while, and all three are a race against people who
 do this full time. Losing that race quietly — extraction that works until it
 doesn't — is worse than a form that says plainly who refused and lets you type.
 
-So the one escalation that is implemented, `WISHD_FETCH_IMPERSONATE=chrome`,
+So the one escalation that is implemented, `WISHBONE_FETCH_IMPERSONATE=chrome`,
 ships switched off. Turning it on is someone deciding a particular shop is
 worth the maintenance, having checked with `check-url -impersonate chrome` that
 it would actually help. The two escalations that are not implemented are the

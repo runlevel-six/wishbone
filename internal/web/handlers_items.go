@@ -13,13 +13,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"wishd/internal/categories"
-	"wishd/internal/extract"
-	"wishd/internal/imgstore"
-	"wishd/internal/model"
-	"wishd/internal/store"
-	"wishd/internal/view"
-	"wishd/internal/web/templates"
+	"wishbone/internal/categories"
+	"wishbone/internal/extract"
+	"wishbone/internal/imgstore"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
+	"wishbone/internal/view"
+	"wishbone/internal/web/templates"
 )
 
 // imageWorkTimeout bounds the outbound image fetch during a save.

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 func (s *Store) Categories(ctx context.Context) ([]*model.Category, error) {

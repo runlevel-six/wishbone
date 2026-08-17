@@ -8,9 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"wishd/internal/model"
-	"wishd/internal/store"
-	"wishd/internal/web/templates"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
+	"wishbone/internal/web/templates"
 )
 
 // claimableItem loads an item the viewer may claim from: visible, live, and

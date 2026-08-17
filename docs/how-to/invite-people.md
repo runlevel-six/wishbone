@@ -16,7 +16,7 @@ credential: anyone holding it can create one account.
 Only a hash of the token is stored, so the link is displayed exactly once. If
 you lose it before sending it, revoke it and make another.
 
-Invites expire after seven days by default (`WISHD_INVITE_TTL`) and can only be
+Invites expire after seven days by default (`WISHBONE_INVITE_TTL`) and can only be
 used once.
 
 ## Revoke an unused invite
@@ -46,7 +46,7 @@ an administrator sets a temporary password for them. The app does this itself â€
 there is no shell or `sqlite3` in the image to do it by hand:
 
 ```sh
-kubectl -n $NS exec -it deploy/wishd -c wishd -- /wishd set-password -user sam
+kubectl -n $NS exec -it deploy/wishbone -c wishbone -- /wishbone set-password -user sam
 ```
 
 It prompts for the password on stderr (so it stays out of shell history and the
@@ -57,10 +57,10 @@ to **Account** and cannot go anywhere else until they choose their own.
 Locally the same thing is:
 
 ```sh
-go run ./cmd/wishd set-password -user sam -db ./tmp/app.db
+go run ./cmd/wishbone set-password -user sam -db ./tmp/app.db
 ```
 
-`wishd hash-password` still exists if you would rather produce a hash and apply
+`wishbone hash-password` still exists if you would rather produce a hash and apply
 the `UPDATE` yourself.
 
 ## Remove someone

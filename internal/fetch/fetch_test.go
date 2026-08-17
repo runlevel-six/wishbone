@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 // TestHostileURLsRefused is the SSRF table from plan §8.

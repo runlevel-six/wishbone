@@ -267,13 +267,13 @@ filter, deterministically, on requests that are otherwise byte-for-byte the ones
 it answers 200 to — measured 6 for 6 against 15 for 15. Browsers always send
 one, so a request claiming to be Chrome without it contradicts itself. `fetch.New`
 therefore fills the field in from `fetch.DefaultAcceptLanguage` when Options
-leaves it unset, which is also the default `WISHD_FETCH_ACCEPT_LANGUAGE`
+leaves it unset, which is also the default `WISHBONE_FETCH_ACCEPT_LANGUAGE`
 documents; setting that variable to a real value is supported, and there is no
 way to send none.
 
 ### When a retailer inspects the handshake
 
-`WISHD_FETCH_IMPERSONATE=chrome` performs the TLS handshake with Chrome's
+`WISHBONE_FETCH_IMPERSONATE=chrome` performs the TLS handshake with Chrome's
 ClientHello ([uTLS](https://github.com/refraction-networking/utls)) instead of
 Go's. The department store chain above answers 200 to a request that is
 otherwise identical.
@@ -290,8 +290,8 @@ actually mattered — `curl-impersonate` matches Chrome's HTTP/2 fingerprint too
 and this does not:
 
 ```sh
-wishd check-url -impersonate chrome '<url>'   # 200, 1132379 bytes
-wishd check-url -impersonate off    '<url>'   # 403
+wishbone check-url -impersonate chrome '<url>'   # 200, 1132379 bytes
+wishbone check-url -impersonate off    '<url>'   # 403
 ```
 
 The response was byte-identical to `curl-impersonate`'s. That retailer fronts
@@ -325,8 +325,8 @@ package makes is a bodyless GET.
 To try it against one URL without turning it on anywhere:
 
 ```sh
-wishd check-url -impersonate chrome '<url>'
-wishd check-url -impersonate off    '<url>'
+wishbone check-url -impersonate chrome '<url>'
+wishbone check-url -impersonate off    '<url>'
 ```
 
 A retailer that refuses both is running a JS challenge, and the answer there is

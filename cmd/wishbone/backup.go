@@ -36,8 +36,8 @@ import (
 func backupCmd(args []string) error {
 	fs := flag.NewFlagSet("backup", flag.ContinueOnError)
 	var (
-		dbPath   = fs.String("db", env("WISHD_DB_PATH", filepath.Join(env("WISHD_DATA_DIR", "/data"), "app.db")), "database file to back up")
-		imageDir = fs.String("images", env("WISHD_IMAGE_DIR", filepath.Join(env("WISHD_DATA_DIR", "/data"), "images")), "image directory to archive")
+		dbPath   = fs.String("db", env("WISHBONE_DB_PATH", filepath.Join(env("WISHBONE_DATA_DIR", "/data"), "app.db")), "database file to back up")
+		imageDir = fs.String("images", env("WISHBONE_IMAGE_DIR", filepath.Join(env("WISHBONE_DATA_DIR", "/data"), "images")), "image directory to archive")
 		dest     = fs.String("dest", env("BACKUP_DEST", "/backup"), "directory to write backups to")
 		interval = fs.Duration("interval", envDuration("BACKUP_INTERVAL", 24*time.Hour), "time between backups")
 		keep     = fs.Int("keep", envInt("BACKUP_KEEP", 14), "how many daily backups of each kind to retain")
@@ -59,7 +59,7 @@ func backupCmd(args []string) error {
 		return dumpBackup(*dest, *dump, os.Stdout)
 	}
 
-	log := newLogger(env("WISHD_LOG_LEVEL", "info")).With(slog.String("component", "backup"))
+	log := newLogger(env("WISHBONE_LOG_LEVEL", "info")).With(slog.String("component", "backup"))
 
 	if err := os.MkdirAll(*dest, 0o755); err != nil {
 		return fmt.Errorf("backup destination: %w", err)

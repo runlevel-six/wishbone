@@ -35,8 +35,8 @@ server container has created it.
 ## Check that backups are actually happening
 
 ```sh
-kubectl -n $NS logs deploy/wishd -c backup --tail=20
-kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -list
+kubectl -n $NS logs deploy/wishbone -c backup --tail=20
+kubectl -n $NS exec deploy/wishbone -c backup -- /wishbone backup -list
 ```
 
 The container has no shell, so `ls` is not available — `-list` is the
@@ -46,7 +46,7 @@ this before you need it, not after.
 ## Take a backup right now
 
 ```sh
-kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -once
+kubectl -n $NS exec deploy/wishbone -c backup -- /wishbone backup -once
 ```
 
 ## Copy a backup off the cluster
@@ -55,8 +55,8 @@ kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -once
 have. Stream it instead:
 
 ```sh
-kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -dump latest > app-backup.db
-kubectl -n $NS exec deploy/wishd -c backup -- /wishd backup -dump latest-images > images.tar.gz
+kubectl -n $NS exec deploy/wishbone -c backup -- /wishbone backup -dump latest > app-backup.db
+kubectl -n $NS exec deploy/wishbone -c backup -- /wishbone backup -dump latest-images > images.tar.gz
 ```
 
 Backup file names carry **UTC** dates, so `date +%F` in a shell west of
@@ -64,8 +64,8 @@ Greenwich names yesterday's file for part of every evening. `latest` sidesteps
 that; use `date -u +%F` if you want to name one explicitly:
 
 ```sh
-kubectl -n $NS exec deploy/wishd -c backup -- \
-  /wishd backup -dump app-$(date -u +%F).db > app-$(date -u +%F).db
+kubectl -n $NS exec deploy/wishbone -c backup -- \
+  /wishbone backup -dump app-$(date -u +%F).db > app-$(date -u +%F).db
 ```
 
 Do this on a schedule you can live with. Backups that never leave the machine
@@ -89,7 +89,7 @@ Better still, restore it into a local instance and click around:
 ```sh
 mkdir -p ./tmp
 cp app-2026-11-01.db ./tmp/app.db
-WISHD_SECURE_COOKIES=false make run
+WISHBONE_SECURE_COOKIES=false make run
 ```
 
 Migrations apply on start, so an older backup is brought up to the current
@@ -102,15 +102,15 @@ do it.
 
 ```sh
 # 1. Stop the writer.
-kubectl -n $NS scale deploy/wishd --replicas=0
+kubectl -n $NS scale deploy/wishbone --replicas=0
 
 # 2. Put the file in place from a pod that mounts both volumes. Scaling to zero
 #    removed the sidecars, so this needs a temporary pod with a shell.
-kubectl -n $NS run wishd-restore --rm -it --image=alpine:3.21 --restart=Never \
-  --overrides='{"spec":{"containers":[{"name":"wishd-restore","image":"alpine:3.21","stdin":true,"tty":true,
+kubectl -n $NS run wishbone-restore --rm -it --image=alpine:3.21 --restart=Never \
+  --overrides='{"spec":{"containers":[{"name":"wishbone-restore","image":"alpine:3.21","stdin":true,"tty":true,
     "volumeMounts":[{"name":"data","mountPath":"/data"},{"name":"backup","mountPath":"/backup"}]}],
-    "volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"wishd-data"}},
-               {"name":"backup","persistentVolumeClaim":{"claimName":"wishd-backup"}}]}}' \
+    "volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"wishbone-data"}},
+               {"name":"backup","persistentVolumeClaim":{"claimName":"wishbone-backup"}}]}}' \
   -- sh
 
 # inside that shell:
@@ -121,7 +121,7 @@ kubectl -n $NS run wishd-restore --rm -it --image=alpine:3.21 --restart=Never \
 #   exit
 
 # 3. Start again.
-kubectl -n $NS scale deploy/wishd --replicas=1
+kubectl -n $NS scale deploy/wishbone --replicas=1
 ```
 
 Deleting the `-wal` and `-shm` files matters: leaving a stale write-ahead log

@@ -3,7 +3,7 @@
 ## Layout
 
 ```
-cmd/wishd            entry point, bootstrap admin, janitor, hash-password
+cmd/wishbone            entry point, bootstrap admin, janitor, hash-password
 internal/config      environment configuration
 internal/db          SQLite open, pragmas, embedded migrations
 internal/model       entity types, IDs, sentinel errors

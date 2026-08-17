@@ -96,7 +96,7 @@ func New(opts Options) *Client {
 		opts.MaxRedirects = 5
 	}
 	if opts.UserAgent == "" {
-		opts.UserAgent = "wishd/1.0"
+		opts.UserAgent = "wishbone/1.0"
 	}
 	if opts.AcceptLanguage == "" {
 		opts.AcceptLanguage = DefaultAcceptLanguage
@@ -357,7 +357,7 @@ var chromeVersion = regexp.MustCompile(`Chrome/(\d+)`)
 // the line this stops at — see docs/explanation/extraction-trade-offs.md.
 //
 // Nothing here is emitted for an honest bot User-Agent. The shape of the
-// request follows the claim the User-Agent makes: a request that says wishd
+// request follows the claim the User-Agent makes: a request that says wishbone
 // and behaves like Chrome is a contradiction, which is precisely the thing
 // being avoided.
 func applyBrowserHeaders(h http.Header, userAgent, accept string) {

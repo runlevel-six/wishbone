@@ -19,8 +19,8 @@ You need:
 ## 1. Build and push the image
 
 ```sh
-make image IMAGE=your-registry/wishd:v1
-docker push your-registry/wishd:v1
+make image IMAGE=your-registry/wishbone:v1
+docker push your-registry/wishbone:v1
 ```
 
 The image is a static binary on `scratch`: no shell, no package manager,
@@ -30,7 +30,7 @@ that in its build stage.
 ## 2. Create the secret
 
 ```sh
-kubectl create secret generic wishd \
+kubectl create secret generic wishbone \
   --from-literal=secret-key="$(openssl rand -hex 32)" \
   --from-literal=bootstrap-admin=you \
   --from-literal=bootstrap-admin-password="$(openssl rand -base64 24)"
@@ -52,7 +52,7 @@ Search for `REPLACE` and set:
 
 | File | What to set |
 |---|---|
-| `deployment.yaml` | image references, `WISHD_BASE_URL`, `WISHD_TRUSTED_PROXY_CIDRS` |
+| `deployment.yaml` | image references, `WISHBONE_BASE_URL`, `WISHBONE_TRUSTED_PROXY_CIDRS` |
 | `storage.yaml` | the block storage class name, volume sizes |
 | `service-ingress.yaml` | hostname, TLS secret (see below) |
 | `networkpolicy.yaml` | your ingress controller's namespace, any extra private ranges |
@@ -64,10 +64,10 @@ this namespace and name it in `spec.tls`, or delete the `tls:` block and let
 the controller serve its default certificate for the host. cert-manager is
 optional: add its `cluster-issuer` annotation only if you want a per-host
 certificate issued. Nothing in the app depends on which you choose — HSTS and
-the `Secure` cookie flag both come from `WISHD_SECURE_COOKIES`, not from
+the `Secure` cookie flag both come from `WISHBONE_SECURE_COOKIES`, not from
 inspecting the certificate or `X-Forwarded-Proto`.
 
-`WISHD_TRUSTED_PROXY_CIDRS` decides who may set `X-Forwarded-For`. Set it to
+`WISHBONE_TRUSTED_PROXY_CIDRS` decides who may set `X-Forwarded-For`. Set it to
 the range your ingress pods run in. Leaving it empty is safe — the app then
 uses the socket address for rate limiting — but setting it too wide lets a
 client spoof its address past the login limiter.
@@ -80,14 +80,14 @@ image. Everything deploys and works without it; add it later with
 
 ```sh
 kubectl apply -k deploy/k8s
-kubectl rollout status deploy/wishd
+kubectl rollout status deploy/wishbone
 ```
 
 ## 5. Check it came up
 
 ```sh
-kubectl exec deploy/wishd -c wishd -- true   # no shell in the image; use logs instead
-kubectl logs deploy/wishd -c wishd
+kubectl exec deploy/wishbone -c wishbone -- true   # no shell in the image; use logs instead
+kubectl logs deploy/wishbone -c wishbone
 ```
 
 Probes:
@@ -117,7 +117,7 @@ against fetching internal addresses is inside the app; see
 ## Upgrading
 
 ```sh
-kubectl set image deploy/wishd wishd=your-registry/wishd:v2
+kubectl set image deploy/wishbone wishbone=your-registry/wishbone:v2
 ```
 
 Migrations run in-process at startup and are recorded in a `schema_migrations`

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"strings"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 // This file is the single chokepoint for claim data (plan §3.2).

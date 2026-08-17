@@ -1,8 +1,8 @@
 {
-  "name": "wishd-extractor",
+  "name": "wishbone-extractor",
   "version": "0.1.0",
   "private": true,
-  "description": "HTTP shim over get-product-name for wishd's extractor chain (tier 5)",
+  "description": "HTTP shim over get-product-name for wishbone's extractor chain (tier 5)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

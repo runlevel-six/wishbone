@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: wishd
+  name: wishbone
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
 spec:
   type: ClusterIP
   selector:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
   ports:
     - name: http
       port: 80
@@ -16,14 +16,14 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: wishd
+  name: wishbone
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
   annotations:
     nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
     # Item pictures are uploaded through the app.
     nginx.ingress.kubernetes.io/proxy-body-size: "8m"
-    # HSTS is sent by the app itself whenever WISHD_SECURE_COOKIES is true, so
+    # HSTS is sent by the app itself whenever WISHBONE_SECURE_COOKIES is true, so
     # no controller snippet is needed — which is just as well, since
     # configuration-snippet annotations are disabled by default in recent
     # ingress-nginx releases.
@@ -48,6 +48,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: wishd
+                name: wishbone
                 port:
                   name: http

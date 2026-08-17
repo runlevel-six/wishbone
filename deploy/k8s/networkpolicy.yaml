@@ -1,4 +1,4 @@
-# Egress policy for wishd.
+# Egress policy for wishbone.
 #
 # This is defense in depth, not the SSRF control. The real guard is the
 # connect-time address check in the dialer, which sees the resolved IP and so
@@ -11,13 +11,13 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: wishd-egress
+  name: wishbone-egress
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: wishd
+      app.kubernetes.io/name: wishbone
   policyTypes: ["Egress"]
   egress:
     # DNS, by port only, to any destination.
@@ -74,13 +74,13 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: wishd-ingress
+  name: wishbone-ingress
   labels:
-    app.kubernetes.io/name: wishd
+    app.kubernetes.io/name: wishbone
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: wishd
+      app.kubernetes.io/name: wishbone
   policyTypes: ["Ingress"]
   ingress:
     - from:

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 // TestVisibilityMatrix is the matrix plan §8 asks for:

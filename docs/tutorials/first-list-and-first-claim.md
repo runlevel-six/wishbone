@@ -18,7 +18,7 @@ From the repository root:
 
 ```sh
 make tools
-WISHD_DEV_PASSWORD=localdevpassword make run
+WISHBONE_DEV_PASSWORD=localdevpassword make run
 ```
 
 The first line installs the template compiler. The second starts the app on

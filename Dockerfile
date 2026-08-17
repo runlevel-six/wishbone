@@ -14,7 +14,7 @@ RUN go install github.com/a-h/templ/cmd/templ@v0.3.1020
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Stamped into the binary so `wishd version`, the startup log and check-url all
+# Stamped into the binary so `wishbone version`, the startup log and check-url all
 # report which build is running.
 ARG VERSION=dev
 
@@ -23,17 +23,17 @@ RUN templ generate
 RUN CGO_ENABLED=0 GOOS=linux go build \
       -trimpath \
       -ldflags="-s -w -X main.version=${VERSION}" \
-      -o /out/wishd ./cmd/wishd
+      -o /out/wishbone ./cmd/wishbone
 
 FROM scratch
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /usr/share/zoneinfo /usr/share/zoneinfo
-COPY --from=build /out/wishd /wishd
+COPY --from=build /out/wishbone /wishbone
 
 # /data is the PVC mount: SQLite database plus the content-addressed images.
 VOLUME ["/data"]
 EXPOSE 8080
 USER 65532:65532
 
-ENTRYPOINT ["/wishd"]
+ENTRYPOINT ["/wishbone"]

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 func (s *Store) AddItemImage(ctx context.Context, img *model.ItemImage) error {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 // rootsFor trusts one httptest server's certificate and nothing else.

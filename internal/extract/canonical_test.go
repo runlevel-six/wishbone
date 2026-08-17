@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/extract"
-	"wishd/internal/model"
+	"wishbone/internal/extract"
+	"wishbone/internal/model"
 )
 
 // TestCanonicalNamesAnotherProduct is the case a real deployment hit: a

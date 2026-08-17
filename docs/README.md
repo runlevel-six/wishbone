@@ -1,6 +1,6 @@
 # Wishbone documentation
 
-Documentation for `wishd`, the daemon behind Wishbone — a self-hosted wishlist
+Documentation for `wishbone`, the daemon behind Wishbone — a self-hosted wishlist
 app for a small, closed group of people who buy each other presents.
 
 These docs follow [Diátaxis](https://diataxis.fr): four kinds of documentation,

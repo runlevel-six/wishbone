@@ -13,9 +13,9 @@ import (
 	"fmt"
 	"strings"
 
-	"wishd/internal/categories"
-	"wishd/internal/model"
-	"wishd/internal/store"
+	"wishbone/internal/categories"
+	"wishbone/internal/model"
+	"wishbone/internal/store"
 )
 
 // Builder constructs view models. It is the only thing outside package store

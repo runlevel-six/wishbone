@@ -46,7 +46,7 @@ func Admin(p Page, d AdminData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.SecretWarn {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"flash flash-warn\">WISHD_SECRET_KEY is unset, so a random key was generated at startup. Sign-in forms submitted before a restart will need one retry. Set it in the deployment.</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<div class=\"flash flash-warn\">WISHBONE_SECRET_KEY is unset, so a random key was generated at startup. Sign-in forms submitted before a restart will need one retry. Set it in the deployment.</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

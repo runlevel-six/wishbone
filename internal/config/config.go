@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"wishd/internal/fetch"
+	"wishbone/internal/fetch"
 )
 
 type Config struct {
@@ -51,32 +51,32 @@ type Config struct {
 
 func Load() (*Config, error) {
 	c := &Config{
-		Addr:                   env("WISHD_ADDR", ":8080"),
-		DataDir:                env("WISHD_DATA_DIR", "/data"),
-		BaseURL:                strings.TrimRight(env("WISHD_BASE_URL", ""), "/"),
-		SessionTTL:             envDuration("WISHD_SESSION_TTL", 30*24*time.Hour),
-		InviteTTL:              envDuration("WISHD_INVITE_TTL", 7*24*time.Hour),
-		SecureCookies:          envBool("WISHD_SECURE_COOKIES", true),
-		BootstrapAdmin:         env("WISHD_BOOTSTRAP_ADMIN", ""),
-		BootstrapAdminPassword: env("WISHD_BOOTSTRAP_ADMIN_PASSWORD", ""),
-		FetchEnabled:           envBool("WISHD_FETCH_ENABLED", true),
-		FetchUserAgent: env("WISHD_FETCH_USER_AGENT",
+		Addr:                   env("WISHBONE_ADDR", ":8080"),
+		DataDir:                env("WISHBONE_DATA_DIR", "/data"),
+		BaseURL:                strings.TrimRight(env("WISHBONE_BASE_URL", ""), "/"),
+		SessionTTL:             envDuration("WISHBONE_SESSION_TTL", 30*24*time.Hour),
+		InviteTTL:              envDuration("WISHBONE_INVITE_TTL", 7*24*time.Hour),
+		SecureCookies:          envBool("WISHBONE_SECURE_COOKIES", true),
+		BootstrapAdmin:         env("WISHBONE_BOOTSTRAP_ADMIN", ""),
+		BootstrapAdminPassword: env("WISHBONE_BOOTSTRAP_ADMIN_PASSWORD", ""),
+		FetchEnabled:           envBool("WISHBONE_FETCH_ENABLED", true),
+		FetchUserAgent: env("WISHBONE_FETCH_USER_AGENT",
 			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
-		FetchLang: env("WISHD_FETCH_ACCEPT_LANGUAGE", fetch.DefaultAcceptLanguage),
+		FetchLang: env("WISHBONE_FETCH_ACCEPT_LANGUAGE", fetch.DefaultAcceptLanguage),
 		FetchImpersonate: strings.ToLower(strings.TrimSpace(
-			env("WISHD_FETCH_IMPERSONATE", ""))),
+			env("WISHBONE_FETCH_IMPERSONATE", ""))),
 		SidecarURL:     strings.TrimRight(env("EXTRACTOR_SIDECAR_URL", ""), "/"),
 		SidecarTimeout: envDuration("EXTRACTOR_SIDECAR_TIMEOUT", 10*time.Second),
-		LogLevel:       env("WISHD_LOG_LEVEL", "info"),
+		LogLevel:       env("WISHBONE_LOG_LEVEL", "info"),
 	}
 
-	c.DBPath = env("WISHD_DB_PATH", filepath.Join(c.DataDir, "app.db"))
-	c.ImageDir = env("WISHD_IMAGE_DIR", filepath.Join(c.DataDir, "images"))
+	c.DBPath = env("WISHBONE_DB_PATH", filepath.Join(c.DataDir, "app.db"))
+	c.ImageDir = env("WISHBONE_IMAGE_DIR", filepath.Join(c.DataDir, "images"))
 
-	if raw := os.Getenv("WISHD_SECRET_KEY"); raw != "" {
+	if raw := os.Getenv("WISHBONE_SECRET_KEY"); raw != "" {
 		key, err := hex.DecodeString(strings.TrimSpace(raw))
 		if err != nil || len(key) < 16 {
-			return nil, fmt.Errorf("WISHD_SECRET_KEY must be at least 32 hex characters")
+			return nil, fmt.Errorf("WISHBONE_SECRET_KEY must be at least 32 hex characters")
 		}
 		c.SecretKey = key
 	} else {
@@ -90,10 +90,10 @@ func Load() (*Config, error) {
 	}
 
 	// Only these sources may set X-Forwarded-For (plan §4).
-	for _, cidr := range splitList(env("WISHD_TRUSTED_PROXY_CIDRS", "")) {
+	for _, cidr := range splitList(env("WISHBONE_TRUSTED_PROXY_CIDRS", "")) {
 		_, n, err := net.ParseCIDR(cidr)
 		if err != nil {
-			return nil, fmt.Errorf("WISHD_TRUSTED_PROXY_CIDRS: %q: %w", cidr, err)
+			return nil, fmt.Errorf("WISHBONE_TRUSTED_PROXY_CIDRS: %q: %w", cidr, err)
 		}
 		c.TrustedProxies = append(c.TrustedProxies, n)
 	}
@@ -108,7 +108,7 @@ func Load() (*Config, error) {
 	switch c.FetchImpersonate {
 	case fetch.ImpersonateOff, fetch.ImpersonateChrome:
 	default:
-		return nil, fmt.Errorf("WISHD_FETCH_IMPERSONATE: %q is not a known mode (want %q)",
+		return nil, fmt.Errorf("WISHBONE_FETCH_IMPERSONATE: %q is not a known mode (want %q)",
 			c.FetchImpersonate, fetch.ImpersonateChrome)
 	}
 	return c, nil

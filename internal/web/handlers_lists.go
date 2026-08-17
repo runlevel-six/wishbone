@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"wishd/internal/model"
-	"wishd/internal/web/templates"
+	"wishbone/internal/model"
+	"wishbone/internal/web/templates"
 )
 
 func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-module wishd
+module wishbone
 
 go 1.26.5
 

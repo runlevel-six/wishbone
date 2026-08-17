@@ -5,7 +5,7 @@ templ Admin(p Page, d AdminData) {
 		<h1>Admin</h1>
 		if d.SecretWarn {
 			<div class="flash flash-warn">
-				WISHD_SECRET_KEY is unset, so a random key was generated at startup. Sign-in
+				WISHBONE_SECRET_KEY is unset, so a random key was generated at startup. Sign-in
 				forms submitted before a restart will need one retry. Set it in the deployment.
 			</div>
 		}

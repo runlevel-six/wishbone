@@ -10,7 +10,7 @@ cannot read.
 ## Turn link lookup off entirely
 
 ```yaml
-- name: WISHD_FETCH_ENABLED
+- name: WISHBONE_FETCH_ENABLED
   value: "false"
 ```
 
@@ -40,8 +40,8 @@ second image built and pushed first.
 
    ```sh
    cd deploy/sidecar/wrapper
-   docker build -t your-registry/wishd-extractor:v1 .
-   docker push your-registry/wishd-extractor:v1
+   docker build -t your-registry/wishbone-extractor:v1 .
+   docker push your-registry/wishbone-extractor:v1
    ```
 
 2. Set the image in `deploy/k8s/extractor-sidecar.yaml`, then uncomment the
@@ -51,7 +51,7 @@ second image built and pushed first.
 3. `kubectl apply -k deploy/k8s`, then check it answers:
 
    ```sh
-   kubectl exec deploy/wishd -c extractor -- \
+   kubectl exec deploy/wishbone -c extractor -- \
      wget -qO- 'http://127.0.0.1:8081/healthz'
    ```
 
@@ -72,7 +72,7 @@ your laptop tell you nothing about results from the cluster. Test from inside
 the pod:
 
 ```sh
-kubectl exec deploy/wishd -c extractor -- \
+kubectl exec deploy/wishbone -c extractor -- \
   wget -qO- 'http://127.0.0.1:8081/extract?url=https%3A%2F%2Fexample.com%2Fdp%2FB0EXAMPLE1'
 ```
 
@@ -80,20 +80,20 @@ kubectl exec deploy/wishd -c extractor -- \
 
 | Variable | Why you would change it |
 |---|---|
-| `WISHD_FETCH_USER_AGENT` | A retailer blocks the default. A browser-like string also switches on the rest of a browser's header set — client hints and `Sec-Fetch-*` — because sending three headers under a Chrome User-Agent is itself what some retailers reject |
-| `WISHD_FETCH_ACCEPT_LANGUAGE` | You want prices in a different locale |
+| `WISHBONE_FETCH_USER_AGENT` | A retailer blocks the default. A browser-like string also switches on the rest of a browser's header set — client hints and `Sec-Fetch-*` — because sending three headers under a Chrome User-Agent is itself what some retailers reject |
+| `WISHBONE_FETCH_ACCEPT_LANGUAGE` | You want prices in a different locale |
 | `EXTRACTOR_SIDECAR_TIMEOUT` | The sidecar is slow on some sites and you would rather wait than fall back |
-| `WISHD_FETCH_IMPERSONATE` | A retailer refuses even a full browser header set. `chrome` matches Chrome's TLS handshake — see [Extraction](../reference/extraction.md#when-a-retailer-inspects-the-handshake) for why it is off by default |
+| `WISHBONE_FETCH_IMPERSONATE` | A retailer refuses even a full browser header set. `chrome` matches Chrome's TLS handshake — see [Extraction](../reference/extraction.md#when-a-retailer-inspects-the-handshake) for why it is off by default |
 
 ## Decide whether impersonation would help
 
 Try it on one URL before turning it on for the deployment:
 
 ```sh
-kubectl exec deploy/wishd -c wishd -- /wishd check-url -impersonate chrome '<url>'
+kubectl exec deploy/wishbone -c wishbone -- /wishbone check-url -impersonate chrome '<url>'
 ```
 
-If that turns a 403 into a 200, set `WISHD_FETCH_IMPERSONATE=chrome` in your
+If that turns a 403 into a 200, set `WISHBONE_FETCH_IMPERSONATE=chrome` in your
 deployment. If it does not, the retailer is running a JS challenge and no
 setting here reaches it.
 
@@ -117,7 +117,7 @@ Timeouts and size caps for page fetches are fixed in code, not configurable:
   HTTP status. Some large chains refuse every request this app makes by
   default, from an address whose browser loads the page fine. Trying
   `check-url -impersonate chrome` on the same URL says whether
-  `WISHD_FETCH_IMPERSONATE=chrome` would change that — for at least one such
+  `WISHBONE_FETCH_IMPERSONATE=chrome` would change that — for at least one such
   retailer it does.
 - **Wrong price or title** — edit the item. Corrections are recorded as
   user-sourced, so nothing will overwrite them later.

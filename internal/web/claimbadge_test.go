@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"wishd/internal/store"
+	"wishbone/internal/store"
 )
 
 // tick waits for the stored-timestamp clock to advance.

@@ -16,7 +16,7 @@ username.
 Set the bootstrap password explicitly:
 
 ```sh
-WISHD_DEV_PASSWORD='at-least-ten-characters' make run
+WISHBONE_DEV_PASSWORD='at-least-ten-characters' make run
 ```
 
 The bootstrap account is created only while the users table is empty. After
@@ -27,12 +27,12 @@ that the variables are ignored and everyone joins by
 
 ```sh
 templ generate
-WISHD_ADDR=127.0.0.1:8080 \
-WISHD_DATA_DIR=./tmp \
-WISHD_SECURE_COOKIES=false \
-WISHD_BOOTSTRAP_ADMIN=you \
-WISHD_BOOTSTRAP_ADMIN_PASSWORD='at-least-ten-characters' \
-go run ./cmd/wishd
+WISHBONE_ADDR=127.0.0.1:8080 \
+WISHBONE_DATA_DIR=./tmp \
+WISHBONE_SECURE_COOKIES=false \
+WISHBONE_BOOTSTRAP_ADMIN=you \
+WISHBONE_BOOTSTRAP_ADMIN_PASSWORD='at-least-ten-characters' \
+go run ./cmd/wishbone
 ```
 
 Every variable is listed in [Configuration](../reference/configuration.md).
@@ -43,7 +43,7 @@ Link lookup makes real requests to whatever URL is pasted. To work offline, or
 to keep a development instance from touching the internet at all:
 
 ```sh
-WISHD_FETCH_ENABLED=false make run
+WISHBONE_FETCH_ENABLED=false make run
 ```
 
 The "Start from a link" box disappears and the manual form is the only path,
@@ -74,12 +74,12 @@ GOPATH)/bin` is on your `PATH`.
 
 **"Your session expired. Go back, reload the page and try again."** — a CSRF
 failure. In development this usually means the server restarted and
-`WISHD_SECRET_KEY` was unset, so a new random key was generated. Reload the
+`WISHBONE_SECRET_KEY` was unset, so a new random key was generated. Reload the
 page. To avoid it entirely, set a fixed key:
 
 ```sh
-WISHD_SECRET_KEY=$(openssl rand -hex 32) make run
+WISHBONE_SECRET_KEY=$(openssl rand -hex 32) make run
 ```
 
 **The browser refuses to send the session cookie** — you are serving plain http
-with `WISHD_SECURE_COOKIES=true`. Set it to `false` locally.
+with `WISHBONE_SECURE_COOKIES=true`. Set it to `false` locally.

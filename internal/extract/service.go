@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"time"
 
-	"wishd/internal/fetch"
-	"wishd/internal/model"
+	"wishbone/internal/fetch"
+	"wishbone/internal/model"
 )
 
 // MaxPageBytes caps a fetched HTML document (plan §5.2).

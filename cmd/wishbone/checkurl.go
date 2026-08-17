@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"wishd/internal/config"
-	"wishd/internal/extract"
-	"wishd/internal/fetch"
+	"wishbone/internal/config"
+	"wishbone/internal/extract"
+	"wishbone/internal/fetch"
 )
 
 // checkURLCmd runs one URL through the real extraction pipeline and reports
@@ -28,25 +28,25 @@ import (
 // address guard, the TCP connect, the TLS handshake, a bot block, or simply a
 // page with no usable metadata.
 //
-//	kubectl run wishd-check --rm -it --restart=Never \
-//	  --image=<your image> --labels=app.kubernetes.io/name=wishd \
+//	kubectl run wishbone-check --rm -it --restart=Never \
+//	  --image=<your image> --labels=app.kubernetes.io/name=wishbone \
 //	  -- check-url https://example.com/products/thing
 func checkURLCmd(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("check-url", flag.ContinueOnError)
 	var (
 		ua      = fs.String("ua", "", "override the User-Agent")
 		timeout = fs.Duration("timeout", 15*time.Second, "overall timeout for this check")
-		// Overrides WISHD_FETCH_IMPERSONATE for one check, which is the point:
+		// Overrides WISHBONE_FETCH_IMPERSONATE for one check, which is the point:
 		// trying "chrome" here answers whether turning it on for the whole
 		// deployment would buy anything, without turning it on.
 		impersonate = fs.String("impersonate", "config",
-			`TLS handshake: "off" for Go's, "chrome" for Chrome's, "config" for WISHD_FETCH_IMPERSONATE`)
+			`TLS handshake: "off" for Go's, "chrome" for Chrome's, "config" for WISHBONE_FETCH_IMPERSONATE`)
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: wishd check-url [flags] <url>")
+		return errors.New("usage: wishbone check-url [flags] <url>")
 	}
 	target := fs.Arg(0)
 
@@ -68,7 +68,7 @@ func checkURLCmd(args []string, stdout io.Writer) error {
 	}
 
 	normalized, nerr := extract.NormalizeURL(target)
-	fmt.Fprintf(stdout, "wishd       %s\n", version)
+	fmt.Fprintf(stdout, "wishbone       %s\n", version)
 	fmt.Fprintf(stdout, "requested   %s\n", target)
 	if nerr != nil {
 		fmt.Fprintf(stdout, "normalized  FAILED: %v\n", nerr)

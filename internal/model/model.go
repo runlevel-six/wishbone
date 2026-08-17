@@ -44,7 +44,7 @@ func NewID() string {
 	id, err := uuid.NewV7()
 	if err != nil {
 		// NewV7 only fails if crypto/rand fails, which is not recoverable.
-		panic("wishd: uuid v7: " + err.Error())
+		panic("wishbone: uuid v7: " + err.Error())
 	}
 	return id.String()
 }

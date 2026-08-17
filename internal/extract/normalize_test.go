@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/extract"
-	"wishd/internal/fetch"
+	"wishbone/internal/extract"
+	"wishbone/internal/fetch"
 )
 
 // TestNormalizeURL covers plan §5.1. The cases mirror the shapes in the

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 // TestConcurrentClaimSingleUnit is the first of the two tests that gate P1

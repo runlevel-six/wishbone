@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"wishd/internal/model"
+	"wishbone/internal/model"
 )
 
 // TestSafeNextRejectsOffsiteRedirects guards a genuine phishing primitive: a
