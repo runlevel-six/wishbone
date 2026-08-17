@@ -343,6 +343,53 @@ func (s *Store) SetClaimNote(ctx context.Context, claimID, claimerID string, not
 	return nil
 }
 
+// AuditClaimsForList returns claim state for every item in a list without asking
+// who is looking.
+//
+// This is the deliberate hole in §3.2, and it is a separate method rather than a
+// parameter on ClaimsForList for exactly one reason: a bypass flag on the
+// chokepoint would put "skip the invariant" inside the function every other
+// caller goes through, one typo away from a leak. A caller has to name this
+// function, and the name says what it does.
+//
+// The only permitted caller is the admin reconciliation report (plan §13), whose
+// own rules — admin only, own lists behind a second deliberate opt-in, both
+// actions logged — are enforced in the handler, not here. Nothing else may call
+// it. It never returns ErrOwnerBlind, so there is no safety net underneath.
+func (s *Store) AuditClaimsForList(ctx context.Context, listID string) (map[string]*ItemClaims, error) {
+	if _, err := s.ListByID(ctx, listID); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+claimCols+`
+		   FROM claims c
+		   JOIN users u ON u.id = c.claimer_id
+		   JOIN items i ON i.id = c.item_id
+		  WHERE i.list_id = ?
+		  ORDER BY c.created_at`, listID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[string]*ItemClaims{}
+	for rows.Next() {
+		c, err := scanClaim(rows)
+		if err != nil {
+			return nil, err
+		}
+		ic := out[c.ItemID]
+		if ic == nil {
+			ic = &ItemClaims{ItemID: c.ItemID}
+			out[c.ItemID] = ic
+		}
+		ic.Claims = append(ic.Claims, c)
+		ic.ClaimedQty += c.Qty
+	}
+	return out, rows.Err()
+}
+
 // ClaimUpdateCount counts the items a person has claimed that the owner has
 // edited or removed since that person last looked at their claims (plan §12).
 //

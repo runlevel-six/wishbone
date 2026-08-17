@@ -197,6 +197,65 @@ type ClaimedRow struct {
 	Changed  bool
 }
 
+// The admin reconciliation report (plan §13). Deliberately flat data: the
+// report is a table somebody reads once to answer a question, not a model
+// anything else is built on.
+
+// AuditPersonData is one person's lists, as an entry point to the report.
+type AuditPersonData struct {
+	PersonID   string
+	PersonName string
+	// IsSelf marks the admin looking at their own lists, which is the case the
+	// whole design is arranged around.
+	IsSelf      bool
+	IncludeOwn  bool
+	ToggleIsOwn bool
+	Lists       []AuditListRow
+}
+
+type AuditListRow struct {
+	ID         string
+	Name       string
+	Visibility string
+	Items      int
+}
+
+// AuditListData is the full state of one list.
+type AuditListData struct {
+	ListID     string
+	ListName   string
+	OwnerID    string
+	OwnerName  string
+	IsOwnList  bool
+	Visibility string
+	Items      []AuditItemRow
+	// Drift counts items where claimed_qty disagrees with the claim rows — the
+	// §2.1 invariant, per item rather than instance-wide.
+	Drift int
+}
+
+type AuditItemRow struct {
+	Title      string
+	Quantity   int
+	ClaimedQty int
+	ClaimSum   int
+	Drift      bool
+	Removed    bool
+	Added      string
+	Claims     []AuditClaimRow
+}
+
+type AuditClaimRow struct {
+	ClaimerName string
+	Qty         int
+	State       string
+	// HasNote says a note exists. The text is never carried here: see the
+	// handler for why.
+	HasNote   bool
+	CreatedAt string
+	UpdatedAt string
+}
+
 // AdminData is the admin page model.
 type AdminData struct {
 	Users        []*model.User

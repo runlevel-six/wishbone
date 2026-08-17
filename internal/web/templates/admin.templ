@@ -60,7 +60,7 @@ templ Admin(p Page, d AdminData) {
 		<section class="card">
 			<h2>People</h2>
 			<table class="table">
-				<thead><tr><th>Name</th><th>Username</th><th>Joined</th><th>Admin</th></tr></thead>
+				<thead><tr><th>Name</th><th>Username</th><th>Joined</th><th>Admin</th><th>Lists</th></tr></thead>
 				<tbody>
 					for _, u := range d.Users {
 						<tr>
@@ -79,6 +79,10 @@ templ Admin(p Page, d AdminData) {
 									}
 								</form>
 							</td>
+							// The way into the reconciliation report (plan §13).
+							// It answers "my claim is not showing", which
+							// owner-blindness makes unanswerable anywhere else.
+							<td><a href={ "/admin/people/" + u.ID }>State</a></td>
 						</tr>
 					}
 				</tbody>

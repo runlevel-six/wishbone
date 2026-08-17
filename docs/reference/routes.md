@@ -64,9 +64,17 @@ Admin-only routes answer 404, not 403, to non-admins.
 | POST | `/admin/invites` | Create an invite; the link is shown once |
 | POST | `/admin/invites/{tokenHash}/delete` | Revoke an unused invite |
 | POST | `/admin/users/{userID}/admin` | Grant or revoke admin (`admin=1`/`0`) |
+| GET | `/admin/people/{userID}` | That person's lists, as the way into the reconciliation report. For the admin's own lists with inclusion off: an explanation and the switch, never the lists |
+| GET | `/admin/lists/{listID}` | Full state of one list: every item, every claim, who holds it, whether it is bought, and whether `claimed_qty` agrees with the claim rows. Soft-deleted items included. Claim note text never |
+| POST | `/admin/lists/mine` | Switch own-list inclusion on or off (`include=on`/`off`) for this browser session |
 
-Admin confers no visibility into other people's lists, and no exemption from
-owner-blindness on their own.
+Admin confers no visibility into other people's lists through any ordinary page,
+and no exemption from owner-blindness on their own. The **reconciliation report**
+is the one deliberate exception, because owner-blindness makes "my claim is not
+showing" unanswerable by anyone: it covers every list, and an admin's own lists
+require a second deliberate action — the `POST` above, off again when the browser
+closes, logged when switched on. An ordinary page never changes for an admin who
+has switched it on.
 
 ## Status codes
 

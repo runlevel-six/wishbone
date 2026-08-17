@@ -156,6 +156,11 @@ func (s *Server) routes() {
 			r.Post("/admin/invites", s.handleCreateInvite)
 			r.Post("/admin/invites/{tokenHash}/delete", s.handleDeleteInvite)
 			r.Post("/admin/users/{userID}/admin", s.handleSetAdmin)
+			// The reconciliation report (plan §13). Own lists are included only
+			// through the POST, per browser session, never by URL.
+			r.Get("/admin/people/{userID}", s.handleAdminPersonLists)
+			r.Get("/admin/lists/{listID}", s.handleAdminListState)
+			r.Post("/admin/lists/mine", s.handleAdminOwnToggle)
 		})
 	})
 

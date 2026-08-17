@@ -1,0 +1,151 @@
+package templates
+
+// The admin reconciliation report (plan §13). It exists to answer "what does the
+// database actually say about this list", which owner-blindness makes
+// unanswerable everywhere else in the app.
+
+templ AuditPerson(p Page, d AuditPersonData) {
+	@Layout(p) {
+		<div class="page-head">
+			<h1>{ d.PersonName }</h1>
+			<a class="button" href="/admin">Back to admin</a>
+		</div>
+		if d.IsSelf && !d.IncludeOwn {
+			<div class="card">
+				<h2>These are your own lists</h2>
+				<p>
+					Wishbone keeps you blind to claims on your own items, and that
+					includes here. If you need to see the real state of one of your
+					lists — because something looks wrong and nobody else can check
+					it for you — you can switch it on for this visit.
+				</p>
+				<p class="muted small">
+					You will see who claimed what, and you cannot un-see it. It is
+					recorded in the log that you turned this on. Closing your browser
+					turns it back off.
+				</p>
+				@auditToggle(p, true)
+			</div>
+		} else {
+			if d.IsSelf {
+				<div class="flash flash-warn" role="status">
+					Your own lists are included for this visit.
+					@auditToggle(p, false)
+				</div>
+			}
+			if len(d.Lists) == 0 {
+				<p class="muted">{ d.PersonName } has no lists.</p>
+			}
+			<ul class="list-grid">
+				for _, l := range d.Lists {
+					<li class="card list-card">
+						<a class="list-name" href={ "/admin/lists/" + l.ID }>{ l.Name }</a>
+						<p class="muted small">
+							{ itoa(l.Items) } { plural(l.Items, "item", "items") } &middot; { visibilityLabel(l.Visibility) }
+						</p>
+					</li>
+				}
+			</ul>
+		}
+	}
+}
+
+// auditToggle is the second of the two deliberate actions. A form, never a link:
+// a URL would be bookmarkable and then inclusion is one click forever.
+templ auditToggle(p Page, on bool) {
+	<form method="post" action="/admin/lists/mine" class="inline">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		if on {
+			<input type="hidden" name="include" value="on"/>
+			<button
+				class="primary"
+				type="submit"
+				data-confirm="This shows claims on your own lists. You cannot un-see them. Continue?"
+			>Include my own lists for this visit</button>
+		} else {
+			<input type="hidden" name="include" value="off"/>
+			<button class="link" type="submit">Hide them again</button>
+		}
+	</form>
+}
+
+templ AuditList(p Page, d AuditListData) {
+	@Layout(p) {
+		<div class="page-head">
+			<div>
+				<h1>{ d.ListName }</h1>
+				<p class="muted small">
+					{ d.OwnerName } &middot; { visibilityLabel(d.Visibility) }
+					if d.IsOwnList {
+						&middot; <strong>your own list</strong>
+					}
+				</p>
+			</div>
+			<a class="button" href={ "/admin/people/" + d.OwnerID }>Back</a>
+		</div>
+		if d.Drift > 0 {
+			<p class="flash flash-error" role="status">
+				{ itoa(d.Drift) } { plural(d.Drift, "item", "items") } where the stored
+				claimed count disagrees with the claim rows. That is the invariant in
+				plan §2.1 and it should never happen; the rows below are the evidence.
+			</p>
+		}
+		if len(d.Items) == 0 {
+			<p class="muted">This list has no items.</p>
+		}
+		for _, it := range d.Items {
+			<div class="card">
+				<h3>
+					{ it.Title }
+					if it.Removed {
+						<span class="tag">removed by owner</span>
+					}
+				</h3>
+				<p class="meta">
+					<span>wants { itoa(it.Quantity) }</span>
+					<span>claimed { itoa(it.ClaimedQty) }</span>
+					if it.Drift {
+						<span class="tag new">claim rows total { itoa(it.ClaimSum) }</span>
+					}
+					if addedLabel(it.Added) != "" {
+						<span class="muted" title={ exactTimestamp(it.Added) }>{ addedLabel(it.Added) }</span>
+					}
+				</p>
+				if len(it.Claims) == 0 {
+					<p class="muted small">No claims.</p>
+				} else {
+					<ul class="claims">
+						for _, c := range it.Claims {
+							<li class="claim">
+								<span class="you">{ c.ClaimerName }</span>
+								<span>&times;{ itoa(c.Qty) }</span>
+								if c.State == "purchased" {
+									<span class="tag ok">bought</span>
+								} else {
+									<span class="tag">claimed</span>
+								}
+								// Whether a note exists, never its text.
+								if c.HasNote {
+									<span class="muted small">has a note</span>
+								}
+								<span class="muted small" title={ exactTimestamp(c.CreatedAt) }>
+									claimed { friendlyDate(c.CreatedAt) }
+								</span>
+								if c.UpdatedAt != c.CreatedAt {
+									<span class="muted small" title={ exactTimestamp(c.UpdatedAt) }>
+										changed { friendlyDate(c.UpdatedAt) }
+									</span>
+								}
+							</li>
+						}
+					</ul>
+				}
+			</div>
+		}
+		<p class="muted small">
+			Claim notes are not shown here. They are written by claimers for each
+			other, and this report exists to answer whether a claim exists and for
+			how many.
+		</p>
+	}
+}

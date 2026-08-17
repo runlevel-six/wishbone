@@ -99,6 +99,20 @@ func (s *Store) RemovedClaimedItems(ctx context.Context, listID, viewerID string
 		  ORDER BY i.deleted_at DESC`, listID, viewerID)
 }
 
+// AuditItemsForList returns every item in a list, soft-deleted ones included.
+//
+// For the admin reconciliation report and nothing else (plan §13). "My claim
+// disappeared" is usually the owner having removed the item, so a report that
+// hides removed items cannot answer the question it exists for. Deliberately
+// separate from LiveItemsForList rather than a flag on it: a caller has to ask
+// for this by name.
+func (s *Store) AuditItemsForList(ctx context.Context, listID string) ([]*model.Item, error) {
+	return s.queryItems(ctx,
+		`SELECT `+itemCols+` FROM items
+		  WHERE list_id = ?
+		  ORDER BY deleted_at IS NOT NULL, sort_order, created_at, id`, listID)
+}
+
 func (s *Store) queryItems(ctx context.Context, q string, args ...any) ([]*model.Item, error) {
 	rows, err := s.db.QueryContext(ctx, q, args...)
 	if err != nil {

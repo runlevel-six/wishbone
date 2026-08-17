@@ -201,3 +201,32 @@ func (h *harness) post(target, session string, form url.Values) *httptest.Respon
 	}
 	return h.request(http.MethodPost, target, session, form)
 }
+
+// mkList creates a list owned by someone other than the seeded owner, for tests
+// that need a second list to look at.
+func (h *harness) mkList(ownerID, name string) *model.List {
+	h.t.Helper()
+	l := &model.List{OwnerID: ownerID, Name: name, Visibility: model.VisibilityAllUsers}
+	if err := h.st.CreateList(context.Background(), l); err != nil {
+		h.t.Fatalf("create list: %v", err)
+	}
+	return l
+}
+
+// newAuthedRequest and serve exist so a test can add a cookie of its own to an
+// otherwise ordinary authenticated request — which is how the admin report's
+// per-visit toggle travels.
+func newAuthedRequest(h *harness, method, target, session string) *http.Request {
+	req := httptest.NewRequest(method, target, nil)
+	if session != "" {
+		req.AddCookie(&http.Cookie{Name: sessionCookie, Value: session})
+		req.Header.Set(csrfHeader, auth.CSRFToken(h.cfg.SecretKey, auth.HashToken(session)))
+	}
+	return req
+}
+
+func serve(h *harness, req *http.Request) *httptest.ResponseRecorder {
+	rec := httptest.NewRecorder()
+	h.srv.ServeHTTP(rec, req)
+	return rec
+}
