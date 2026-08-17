@@ -35,6 +35,9 @@ type Page struct {
 	// edited or removed since they last looked (plan §12). Their own claims
 	// only; nothing here describes anyone else's.
 	ClaimUpdates int
+	// Asset is the build version, appended to every /static/ URL so a release
+	// retires the previous release's cached files. See asset().
+	Asset string
 }
 
 func (p Page) IsAdmin() bool { return p.User != nil && p.User.IsAdmin }

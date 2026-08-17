@@ -85,6 +85,20 @@ func friendlyDate(ts string) string {
 	return t.Local().Format("Jan 2, 2006")
 }
 
+// asset appends the build version to a static URL.
+//
+// Three separate caches hold these files and none of them can be told to let go:
+// the HTTP cache honours an hour of max-age, browsers keep a favicon for far
+// longer than they are told to, and the service worker matches by URL. A new URL
+// is the only instruction all three obey. An empty version — tests, and `go run`
+// during development — leaves the URL alone, so nothing has to special-case it.
+func asset(path, version string) string {
+	if version == "" {
+		return path
+	}
+	return path + "?v=" + url.QueryEscape(version)
+}
+
 // claimUpdatesTitle explains the badge without naming an item. The nav is on
 // every page including a list owner's own, and a tooltip is the wrong place to
 // start describing which of somebody's claims changed.

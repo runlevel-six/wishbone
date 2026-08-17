@@ -123,6 +123,9 @@ func run() error {
 		return err
 	}
 
+	// Every static asset URL carries this, so shipping a build is all it takes
+	// to retire the previous build's cached CSS and icons.
+	cfg.Version = version
 	srv := web.NewServer(cfg, st, extractor, images, log)
 
 	httpServer := &http.Server{

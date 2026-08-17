@@ -26,6 +26,13 @@ type Config struct {
 	SecretKey         []byte
 	SecretIsEphemeral bool
 
+	// Version is the build stamp, set by main rather than read from the
+	// environment. It is not configuration in the usual sense; it is here
+	// because every asset URL carries it as a cache-busting token, and a
+	// released build needs exactly one thing to change for browsers, phones and
+	// the service worker to let go of the previous release's files.
+	Version string
+
 	SessionTTL     time.Duration
 	InviteTTL      time.Duration
 	SecureCookies  bool

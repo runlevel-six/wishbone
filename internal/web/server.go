@@ -167,9 +167,20 @@ func (s *Server) routes() {
 	s.router = r
 }
 
+// staticCache sets how long /static/ may be held.
+//
+// A request carrying a version is safe to keep forever: the URL changes with
+// every build, so a cached copy can never be the wrong copy. One without a
+// version might be anything — a hand-typed URL, an older page still in a tab —
+// and gets an hour, which is short enough that a release reaches it soon and
+// long enough to be worth having.
 func staticCache(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age=3600")
+		if r.URL.Query().Get("v") != "" {
+			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+		} else {
+			w.Header().Set("Cache-Control", "public, max-age=3600")
+		}
 		h.ServeHTTP(w, r)
 	})
 }

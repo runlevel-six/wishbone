@@ -22,6 +22,7 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) temp
 		CSRF:    csrfFrom(r.Context()),
 		Flashes: s.takeFlashes(w, r),
 		Path:    r.URL.Path,
+		Asset:   s.cfg.Version,
 	}
 	// The unread count on the Claimed link (plan §12). It lives in the chrome
 	// because the whole point is to be seen from wherever the person happens to

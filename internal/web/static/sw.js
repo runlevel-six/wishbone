@@ -9,21 +9,38 @@
 // read a list they were never shared, and a cached page could show a claim
 // after it was released. Every other request goes straight to the network.
 
-const CACHE = "wishbone-static-v1";
+// The cache is keyed on the build version, which app.js passes in the query of
+// the script URL. That matters more than it looks: this worker is registered
+// once and then only replaced when its own bytes change, so a hand-written
+// version constant is a thing somebody has to remember, and the release that
+// changed every icon in the app is the release that proved nobody does. A new
+// build is a new script URL, which is a new worker, a new cache, and the old
+// cache deleted on activate.
+const VERSION = new URL(self.location.href).searchParams.get("v") || "dev";
+const CACHE = "wishbone-static-" + VERSION;
 
-const SHELL = [
-  "/static/app.css",
-  "/static/app.js",
-  "/static/htmx.min.js",
-  "/static/icon.svg",
-  "/static/icon-192.png",
-];
+// Only what the shell needs in order to render. Icons are deliberately absent:
+// they are fetched rarely, they are not on the critical path, and precaching
+// them is what pinned a stale set of them into every installed client.
+const SHELL = ["/static/app.css", "/static/app.js", "/static/htmx.min.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(SHELL))
+      .then((cache) =>
+        // cache: "reload" so the HTTP cache cannot satisfy these from the
+        // previous build. Without it, a worker installed to pick up new assets
+        // can populate itself with the old ones and be none the wiser.
+        cache.addAll(
+          SHELL.map(
+            (path) =>
+              new Request(path + "?v=" + encodeURIComponent(VERSION), {
+                cache: "reload",
+              }),
+          ),
+        ),
+      )
       .then(() => self.skipWaiting()),
   );
 });
@@ -52,7 +69,25 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Stale while revalidate: answer from the cache when there is a hit, and
+  // refresh the entry in the background either way. The version in the URL is
+  // the mechanism that retires old files, and this is the safety net for when
+  // it is not enough — an asset changed without a release, a worker that
+  // installed against a stale HTTP cache — so a wrong entry costs one page load
+  // instead of living forever.
   event.respondWith(
-    caches.match(event.request).then((hit) => hit || fetch(event.request)),
+    caches.open(CACHE).then((cache) =>
+      cache.match(event.request).then((hit) => {
+        const fresh = fetch(event.request)
+          .then((res) => {
+            if (res && res.ok) {
+              cache.put(event.request, res.clone());
+            }
+            return res;
+          })
+          .catch(() => hit);
+        return hit || fresh;
+      }),
+    ),
   );
 });

@@ -47,9 +47,16 @@
 
 	// Register the service worker. It caches only /static/, which is what makes
 	// the app installable on a phone; see sw.js for why nothing else is cached.
+	//
+	// The build version rides along in the query. A worker is replaced only when
+	// its own bytes change, and sw.js does not change between releases, so
+	// without this a new build's assets are invisible to anyone who has already
+	// installed one. The version is on <html> so this file stays static.
 	if ("serviceWorker" in navigator) {
 		window.addEventListener("load", function () {
-			navigator.serviceWorker.register("/sw.js").catch(function (err) {
+			var v = document.documentElement.getAttribute("data-asset-version") || "";
+			var url = v ? "/sw.js?v=" + encodeURIComponent(v) : "/sw.js";
+			navigator.serviceWorker.register(url).catch(function (err) {
 				console.warn("service worker registration failed:", err);
 			});
 		});

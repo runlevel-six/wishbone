@@ -2,7 +2,7 @@ package templates
 
 templ Layout(p Page) {
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="en" data-asset-version={ p.Asset }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -14,18 +14,24 @@ templ Layout(p Page) {
 					{ ProductName }
 				}
 			</title>
-			<link rel="stylesheet" href="/static/app.css"/>
-			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
-			<link rel="manifest" href="/static/manifest.webmanifest"/>
+			// Every asset carries the build version. Without it a changed
+			// stylesheet or icon is invisible to anyone who has been here before:
+			// /static/ is served with an hour of max-age, browsers keep favicons
+			// far longer than that, and the service worker caches by URL. Shipping
+			// a build is meant to be the only thing needed to retire the previous
+			// build's files.
+			<link rel="stylesheet" href={ asset("/static/app.css", p.Asset) }/>
+			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
+			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
 			<meta name="theme-color" content="#1F4D3A"/>
 			// iOS ignores the manifest for home-screen installs and reads these
 			// instead. It also has no Web Share Target — see the phone how-to.
-			<link rel="apple-touch-icon" href="/static/apple-touch-icon.png"/>
+			<link rel="apple-touch-icon" href={ asset("/static/apple-touch-icon.png", p.Asset) }/>
 			<meta name="apple-mobile-web-app-capable" content="yes"/>
 			<meta name="apple-mobile-web-app-title" content="Wishbone"/>
 			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
-			<script src="/static/htmx.min.js" defer></script>
-			<script src="/static/app.js" defer></script>
+			<script src={ asset("/static/htmx.min.js", p.Asset) } defer></script>
+			<script src={ asset("/static/app.js", p.Asset) } defer></script>
 		</head>
 		<body hx-headers={ csrfHeader(p.CSRF) }>
 			if p.User != nil {
@@ -64,19 +70,25 @@ templ Layout(p Page) {
 // Bare is the chrome-free layout used by the sign-in and registration pages.
 templ Bare(p Page) {
 	<!DOCTYPE html>
-	<html lang="en">
+	<html lang="en" data-asset-version={ p.Asset }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="referrer" content="no-referrer"/>
 			<title>{ p.Title } &middot; { ProductName }</title>
-			<link rel="stylesheet" href="/static/app.css"/>
-			<link rel="icon" href="/static/icon.svg" type="image/svg+xml"/>
-			<link rel="manifest" href="/static/manifest.webmanifest"/>
+			// Every asset carries the build version. Without it a changed
+			// stylesheet or icon is invisible to anyone who has been here before:
+			// /static/ is served with an hour of max-age, browsers keep favicons
+			// far longer than that, and the service worker caches by URL. Shipping
+			// a build is meant to be the only thing needed to retire the previous
+			// build's files.
+			<link rel="stylesheet" href={ asset("/static/app.css", p.Asset) }/>
+			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
+			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
 			<meta name="theme-color" content="#1F4D3A"/>
 			// iOS ignores the manifest for home-screen installs and reads these
 			// instead. It also has no Web Share Target — see the phone how-to.
-			<link rel="apple-touch-icon" href="/static/apple-touch-icon.png"/>
+			<link rel="apple-touch-icon" href={ asset("/static/apple-touch-icon.png", p.Asset) }/>
 			<meta name="apple-mobile-web-app-capable" content="yes"/>
 			<meta name="apple-mobile-web-app-title" content="Wishbone"/>
 			<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
