@@ -74,6 +74,21 @@ hardest, and a cold request succeeding says nothing about sustained polling.
 | `WISHBONE_LINK_CHECK_AGE` | `168h` (7 days) | Only re-check links nobody has looked at in this long |
 | `WISHBONE_LINK_CHECK_SPACING` | `30s` | Pause between items within a sweep |
 
+No single host contributes more than **a quarter of a batch** to one sweep, and
+what is left is interleaved so consecutive requests go to different places. This is
+not tunable, because it exists to protect something a knob would not: 60% of the
+first real corpus pointed at one marketplace — the one with the most aggressive bot
+detection, and the one a phone share sheet produces links for. Without the cap the
+7-day floor brings everything due together, and a sweep becomes a dozen requests to
+that host inside ten minutes, denser than anything a person does by hand. The
+interactive link lookup shares the same egress address, so a job that teaches a
+filter to distrust it costs somebody pasting a link on their phone, to gain a
+re-check of a page that marketplace almost never takes down.
+
+Items held back by the cap keep their old `link_checked_at`, so they are first in
+line next sweep, and the sweep logs how many it deferred — a cap that drops work
+silently reads as "everything was checked".
+
 Only **404** and **410** mark a link `dead` — those are the shop saying the thing
 is gone. A refusal (403, 429), a server error, a timeout or a DNS failure records
 the attempt and **leaves the stored status alone**: none of them is evidence about

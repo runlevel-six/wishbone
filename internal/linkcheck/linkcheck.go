@@ -39,6 +39,8 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	"wishbone/internal/extract"
@@ -132,6 +134,15 @@ func (c *Checker) Sweep(ctx context.Context) Result {
 		return res
 	}
 
+	items, deferred := spreadByHost(items, c.perHostCap())
+	if deferred > 0 {
+		// Said out loud: a cap that silently drops work reads as "everything was
+		// checked" when it was not. The deferred items keep their old
+		// link_checked_at, so they are first in line next sweep.
+		c.log.Info("link health: deferring items to spread the load",
+			slog.Int("deferred", deferred), slog.Int("per_host_cap", c.perHostCap()))
+	}
+
 	for i, it := range items {
 		if ctx.Err() != nil {
 			return res
@@ -152,6 +163,76 @@ func (c *Checker) Sweep(ctx context.Context) Result {
 		slog.Int("suspect", res.Suspect),
 		slog.Int("inconclusive", res.Inconclusive))
 	return res
+}
+
+// perHostCap is the most items from one host a single sweep will touch.
+//
+// A quarter of the batch, never fewer than two. The reason is a measured mix
+// rather than a principle: 60% of the first real corpus pointed at one
+// marketplace — the one with the most aggressive bot detection and the one the
+// phone share sheet produces links for. Without a cap, the age floor makes
+// everything come due together and a sweep becomes twelve requests to that host
+// inside ten minutes, which is denser than anything the interactive path does.
+//
+// And the interactive path is what this protects. Both share an egress address,
+// so a job that teaches a filter to distrust it costs somebody pasting a link on
+// their phone, to gain a re-check of a page that marketplace almost never takes
+// down. Cheap insurance against a mix nobody chose.
+func (c *Checker) perHostCap() int {
+	if cap := c.opts.Batch / 4; cap >= 2 {
+		return cap
+	}
+	return 2
+}
+
+// spreadByHost caps how many items one host contributes and interleaves what is
+// left, so consecutive requests go to different places wherever possible. It
+// returns the reordered items and how many were held back.
+//
+// Order within a host is preserved, so the oldest check is still the first to be
+// looked at — the cap changes how much of one host a sweep takes, not which of
+// its items go first.
+func spreadByHost(items []*model.Item, cap int) (out []*model.Item, deferred int) {
+	byHost := map[string][]*model.Item{}
+	var order []string
+	for _, it := range items {
+		h := hostOf(model.Deref(it.URL))
+		if _, seen := byHost[h]; !seen {
+			order = append(order, h)
+		}
+		byHost[h] = append(byHost[h], it)
+	}
+	for _, h := range order {
+		if len(byHost[h]) > cap {
+			deferred += len(byHost[h]) - cap
+			byHost[h] = byHost[h][:cap]
+		}
+	}
+	// Round-robin across hosts: with one host dominating, its requests end up as
+	// far apart as the batch allows.
+	for n := 0; len(out) < len(items)-deferred; n++ {
+		progressed := false
+		for _, h := range order {
+			if n < len(byHost[h]) {
+				out = append(out, byHost[h][n])
+				progressed = true
+			}
+		}
+		if !progressed {
+			break
+		}
+	}
+	return out, deferred
+}
+
+// hostOf is the registrable-ish host of a stored URL: enough to tell one
+// retailer from another, and deliberately not clever about it.
+func hostOf(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	return strings.TrimPrefix(strings.ToLower(u.Host), "www.")
 }
 
 func (c *Checker) check(ctx context.Context, it *model.Item, res *Result) {

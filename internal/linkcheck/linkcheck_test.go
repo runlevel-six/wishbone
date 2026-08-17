@@ -67,9 +67,13 @@ func newFixture(t *testing.T, handler http.HandlerFunc) *fixture {
 	f := &fixture{t: t, st: st, srv: srv}
 	f.c = New(st, ex, slog.New(slog.NewTextHandler(io.Discard, nil)), Options{
 		Interval: time.Hour,
-		Batch:    10,
-		Age:      7 * 24 * time.Hour,
-		Spacing:  30 * time.Second,
+		// Large enough that the per-host cap (a quarter of the batch) does not
+		// interfere: every item in this fixture is on the one test server, and
+		// most of these tests are about what a verdict is rather than how the
+		// load is spread. The tests that care about the cap set their own batch.
+		Batch:   40,
+		Age:     7 * 24 * time.Hour,
+		Spacing: 30 * time.Second,
 	})
 	f.c.sleep = func(d time.Duration) { f.slept = append(f.slept, d) }
 
@@ -338,5 +342,78 @@ func TestNeverCheckedItemsComeFirst(t *testing.T) {
 
 	if got := f.reload(never.ID); got.LinkCheckedAt == nil {
 		t.Error("the never-checked item was not the one picked first")
+	}
+}
+
+// TestOneHostCannotDominateASweep is the answer to a measured mix, not a
+// hypothetical: 60% of the first real corpus pointed at a single marketplace, and
+// without a cap the age floor brings all of it due at once — twelve requests to
+// one host inside ten minutes, denser than anything a person does by hand.
+func TestOneHostCannotDominateASweep(t *testing.T) {
+	f := newFixture(t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("content-type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(livePage))
+	})
+	f.c.opts.Batch = 8 // cap becomes 2
+
+	// Six items on the test server's host, and two elsewhere. The elsewhere ones
+	// resolve nowhere, which does not matter: what is asserted is who was asked.
+	for i := 0; i < 6; i++ {
+		f.addItem("/products/dominant-"+string(rune('a'+i)), model.LinkUnknown)
+	}
+	for _, other := range []string{"https://other.example/one", "https://third.example/two"} {
+		it := &model.Item{ListID: f.list.ID, Title: other, URL: model.Ptr(other),
+			Quantity: 1, LinkStatus: model.LinkUnknown}
+		if err := f.st.CreateItem(context.Background(), it); err != nil {
+			t.Fatalf("create: %v", err)
+		}
+	}
+
+	res := f.c.Sweep(context.Background())
+	if res.Checked != 4 {
+		t.Errorf("checked = %d, want 4: two per host across three hosts, minus the "+
+			"dominant host's four deferred (%+v)", res.Checked, res)
+	}
+}
+
+// TestSpreadByHostInterleavesAndCaps exercises the ordering directly, because the
+// point of it is *where consecutive requests go*, which a count cannot show.
+func TestSpreadByHostInterleavesAndCaps(t *testing.T) {
+	mk := func(u string) *model.Item { return &model.Item{URL: model.Ptr(u)} }
+	items := []*model.Item{
+		mk("https://big.example/1"),
+		mk("https://big.example/2"),
+		mk("https://big.example/3"),
+		mk("https://big.example/4"),
+		mk("https://small.example/1"),
+		mk("https://other.example/1"),
+	}
+
+	out, deferred := spreadByHost(items, 2)
+	if deferred != 2 {
+		t.Errorf("deferred = %d, want 2 of big.example held back", deferred)
+	}
+	if len(out) != 4 {
+		t.Fatalf("kept %d items, want 4", len(out))
+	}
+	// The dominant host must not take two slots in a row while another host is
+	// still waiting.
+	var hosts []string
+	for _, it := range out {
+		hosts = append(hosts, hostOf(model.Deref(it.URL)))
+	}
+	if hosts[0] == hosts[1] {
+		t.Errorf("consecutive requests to the same host: %v", hosts)
+	}
+	// Oldest-first order within a host is preserved: /1 before /2.
+	first, second := model.Deref(out[0].URL), ""
+	for _, it := range out[1:] {
+		if hostOf(model.Deref(it.URL)) == hostOf(first) {
+			second = model.Deref(it.URL)
+			break
+		}
+	}
+	if first != "https://big.example/1" || second != "https://big.example/2" {
+		t.Errorf("within-host order changed: %q then %q", first, second)
 	}
 }
