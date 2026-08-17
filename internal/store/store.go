@@ -47,7 +47,7 @@ func (s *Store) write(ctx context.Context, fn func(Querier) error) (err error) {
 	defer func() {
 		if !committed {
 			// Best effort; the connection is closed right after either way.
-			conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
+			_, _ = conn.ExecContext(context.WithoutCancel(ctx), "ROLLBACK")
 		}
 	}()
 

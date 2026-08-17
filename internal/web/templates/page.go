@@ -152,7 +152,7 @@ type ItemFormData struct {
 // rather than re-fetched on the way back so that what is applied is exactly
 // what was on screen: a second fetch of the same URL can legitimately answer
 // differently — a retailer that rate-limits, a page that changed — and a
-// button labelled "use these details" that quietly uses others would be worse
+// button labeled "use these details" that quietly uses others would be worse
 // than the guard it is softening.
 type FoundDetails struct {
 	Title    string

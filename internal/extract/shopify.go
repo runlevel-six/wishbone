@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 
@@ -89,7 +90,7 @@ func (s Shopify) Extract(ctx context.Context, p *Page) (Fields, error) {
 	if err != nil {
 		return f, err
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return f, fmt.Errorf("shopify: status %d", resp.StatusCode)
 	}
 	if !strings.Contains(strings.ToLower(resp.ContentType), "json") {
@@ -157,7 +158,11 @@ func attrKeyFor(name string) string {
 	switch strings.ToLower(strings.TrimSpace(name)) {
 	case "size", "sizes":
 		return "size"
-	case "color", "colour":
+	// The British spelling is not a typo here: it is the option name a British
+	// shop publishes, and dropping it loses the color of every garment they
+	// sell. misspell is for prose, not for values that mirror somebody else's
+	// data.
+	case "color", "colour": //nolint:misspell // matches the shop's own spelling
 		return "color"
 	case "material":
 		return "material"

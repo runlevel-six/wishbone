@@ -100,3 +100,44 @@ And if you touched claims, storage or the fetcher:
 ```sh
 make race
 ```
+
+`make check` runs `gofmt -w`, which is what you want locally and the wrong thing
+in CI — it would reformat the code and then pass. So CI checks rather than fixes:
+unformatted Go fails the run, and so does a commit whose `*_templ.go` files do not
+match a fresh `templ generate`. It also runs the linter, which `make check` does
+not:
+
+```sh
+golangci-lint run ./...
+```
+
+The configuration is `.golangci.yaml`. Two settings there are worth knowing before
+you fight them: `misspell` is set to US English deliberately, and the `revive`
+`exported` rule is deliberately **off** — everything here lives under `internal/`,
+so there is no consumer whose API those doc comments would document.
+
+## Releasing
+
+The version is not typed anywhere. `make` derives it from the nearest `v*` tag:
+
+```make
+VERSION ?= $(shell git describe --tags --match 'v[0-9]*' --always --dirty ...)
+```
+
+It ends up in three places that matter: the startup log, `wishbone version`, and
+the query string on every `/static/` URL — which is what makes a release retire
+the previous release's cached assets (see
+[configuration](../reference/configuration.md)). So the tag is not bookkeeping; it
+is the thing that makes a deploy reach anyone.
+
+```sh
+git tag -s v0.6.0 -m "what changed"
+git push origin v0.6.0
+make image            # stamps v0.6.0 from the tag
+# push the image, then bump newTag in your overlay and apply
+```
+
+Tag before you build. Building first stamps `<sha>-dirty` or the previous tag plus
+a commit count, and then the running version does not correspond to anything you
+can check out. The `--match 'v[0-9]*'` is load-bearing for the same reason: without
+it any other tag in the repository becomes the version string.

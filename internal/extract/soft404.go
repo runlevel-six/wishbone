@@ -1,6 +1,7 @@
 package extract
 
 import (
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -36,7 +37,7 @@ func ApplySoft404Guard(res *Result, page *Page) {
 	// that was never wrong.
 	if page.StatusCode >= 400 {
 		switch page.StatusCode {
-		case 404, 410:
+		case http.StatusNotFound, http.StatusGone:
 			res.Suspect = true
 			res.SuspectReason = append(res.SuspectReason, "the page is gone (the shop returned "+
 				strconv.Itoa(page.StatusCode)+")")

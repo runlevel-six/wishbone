@@ -209,7 +209,7 @@ func TestHeadWinsOverBody(t *testing.T) {
 // Server Components payload, split across two pushes so that a per-chunk scan
 // would find neither half.
 //
-// The fixture also carries a neighbour product in the same payload, because a
+// The fixture also carries a neighbor product in the same payload, because a
 // recommendation rail is the normal case and taking its price would be worse
 // than extracting nothing at all.
 func TestStreamedMetadataPage(t *testing.T) {
@@ -239,7 +239,7 @@ func TestStreamedMetadataPage(t *testing.T) {
 	if res.Currency != "USD" {
 		t.Errorf("currency = %q", res.Currency)
 	}
-	// The neighbour in the same payload must not have been picked up.
+	// The neighbor in the same payload must not have been picked up.
 	if res.SKU == "WS-9100" || (res.PriceCents != nil && *res.PriceCents == 3900) {
 		t.Error("extracted the recommendation rail's product instead of the page's")
 	}
@@ -276,7 +276,7 @@ func TestCarouselProductLosesToThePage(t *testing.T) {
 	html := `<html><head></head><body>
 	<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product",
 	  "@id":"https://shop.example.com/p/you-may-also-like","name":"Neighbour item",
-	  "sku":"NEIGHBOUR-1","offers":{"@type":"Offer","price":"99.00","priceCurrency":"USD"}}</script>
+	  "sku":"NEIGHBOR-1","offers":{"@type":"Offer","price":"99.00","priceCurrency":"USD"}}</script>
 	<script type="application/ld+json">{"@context":"https://schema.org","@type":"Product",
 	  "@id":"https://shop.example.com/p/real-item","name":"The real item",
 	  "sku":"REAL-1","offers":{"@type":"Offer","price":"24.00","priceCurrency":"USD"}}</script>

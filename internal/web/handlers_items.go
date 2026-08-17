@@ -152,7 +152,8 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 	f.Sources = preview.Result.Sources
 	f.LinkStatus = preview.LinkStatus
 
-	if preview.Blocked() {
+	switch {
+	case preview.Blocked():
 		// The shop refused to be read. Said plainly, and not as a warning
 		// about the link: the link is fine, and telling someone to go check it
 		// wastes their time on the one part of this that was never wrong.
@@ -161,7 +162,7 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("link lookup refused by the retailer",
 			slog.String("url", preview.URL),
 			slog.Int("status", preview.Result.BlockedStatus))
-	} else if preview.Suspect() {
+	case preview.Suspect():
 		// Show what was found, fill in nothing. Showing it is the point: the
 		// guard exists to stop Wishbone being confidently wrong, not to
 		// withhold what it read. The owner can apply it with one click, and
@@ -169,7 +170,7 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 		f.Suspect = true
 		f.SuspectReason = preview.Result.SuspectReason
 		f.Found = foundDetails(preview)
-	} else {
+	default:
 		res := preview.Result
 		f.Title = res.Title
 		f.Descr = res.Description
@@ -362,7 +363,7 @@ func (s *Server) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in, _, ok := s.parseItemForm(w, r, l.ID, "")
+	in, ok := s.parseItemForm(w, r, l.ID, "")
 	if !ok {
 		return
 	}
@@ -407,7 +408,7 @@ func (s *Server) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	in, _, ok := s.parseItemForm(w, r, l.ID, it.ID)
+	in, ok := s.parseItemForm(w, r, l.ID, it.ID)
 	if !ok {
 		return
 	}
@@ -537,7 +538,10 @@ type itemInput struct {
 }
 
 // parseItemForm validates a submitted item, re-rendering the form on failure.
-func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, itemID string) (itemInput, templates.ItemFormData, bool) {
+// parseItemForm validates a submitted item form. On failure it re-renders the
+// form itself, with the messages, and reports false — so there is nothing for a
+// caller to hand back, and it does not return the form model it just rendered.
+func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, itemID string) (itemInput, bool) {
 	ctx := r.Context()
 	var in itemInput
 
@@ -622,7 +626,7 @@ func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, i
 		opts, err := s.categoryOptions(ctx, nil)
 		if err != nil {
 			s.fail(w, r, err)
-			return in, templates.ItemFormData{}, false
+			return in, false
 		}
 		f := templates.ItemFormData{
 			ListID:       listID,
@@ -640,7 +644,7 @@ func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, i
 			Errors:       errs,
 		}
 		s.render(w, r, http.StatusBadRequest, templates.ItemForm(s.page(w, r, "Item"), f))
-		return in, f, false
+		return in, false
 	}
 
 	in.Title = title
@@ -683,7 +687,7 @@ func (s *Server) parseItemForm(w http.ResponseWriter, r *http.Request, listID, i
 	fs, _ := categories.Marshal(sources)
 	in.FieldSources = fs
 
-	return in, templates.ItemFormData{}, true
+	return in, true
 }
 
 // ownedItem loads an item and verifies the caller owns its list.

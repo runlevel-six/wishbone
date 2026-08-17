@@ -132,7 +132,7 @@ func TestShopifyTier(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/products/ridgeline-wool-socks.json", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(product)
+		_ = json.NewEncoder(w).Encode(product)
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()

@@ -88,7 +88,7 @@ func friendlyDate(ts string) string {
 // asset appends the build version to a static URL.
 //
 // Three separate caches hold these files and none of them can be told to let go:
-// the HTTP cache honours an hour of max-age, browsers keep a favicon for far
+// the HTTP cache honors an hour of max-age, browsers keep a favicon for far
 // longer than they are told to, and the service worker matches by URL. A new URL
 // is the only instruction all three obey. An empty version — tests, and `go run`
 // during development — leaves the URL alone, so nothing has to special-case it.

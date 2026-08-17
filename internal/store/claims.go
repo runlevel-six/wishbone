@@ -228,7 +228,8 @@ func (s *Store) CreateClaim(ctx context.Context, itemID, claimerID string, qty i
 		if ownerID == claimerID {
 			return model.ErrOwnerBlind
 		}
-		if visibility == model.VisibilitySelected {
+		switch visibility {
+		case model.VisibilitySelected:
 			var n int
 			if err := q.QueryRowContext(ctx,
 				`SELECT COUNT(*) FROM list_shares sh
@@ -239,7 +240,7 @@ func (s *Store) CreateClaim(ctx context.Context, itemID, claimerID string, qty i
 			if n == 0 {
 				return model.ErrNotFound
 			}
-		} else if visibility == model.VisibilityPrivate {
+		case model.VisibilityPrivate:
 			return model.ErrNotFound
 		}
 

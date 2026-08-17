@@ -40,7 +40,7 @@ import (
 //     unescaping gets \\" and \u sequences wrong in ways that corrupt prices.
 //
 // What is deliberately conservative: a payload can describe more than one
-// product — recommendation carousels put their neighbours in the same stream —
+// product — recommendation carousels put their neighbors in the same stream —
 // and picking the wrong one yields a confidently wrong item, which is the exact
 // failure the soft-404 guard exists to prevent. So when the payload is
 // ambiguous, this refuses rather than guesses. See recoverFlightJSONLD.
@@ -144,7 +144,7 @@ func jsonStringAt(s string, i int) (string, int, bool) {
 //
 // The rule when there is ambiguity is to refuse. A payload with several Product
 // nodes is a page with a carousel, and the extractor has no way to tell the
-// item from its neighbours except by the address each one claims. So:
+// item from its neighbors except by the address each one claims. So:
 //
 //   - one Product-bearing document: take it. A page that describes exactly one
 //     product is describing itself.

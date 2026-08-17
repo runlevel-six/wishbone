@@ -82,7 +82,7 @@ func New(st *store.Store, ex *extract.Service, log *slog.Logger, opts Options) *
 	}
 }
 
-// Run sweeps on a ticker until the context is cancelled. It does not sweep on
+// Run sweeps on a ticker until the context is canceled. It does not sweep on
 // startup: a restart loop would otherwise turn into a request loop, and there is
 // nothing urgent about a link that has been dead for a week.
 func (c *Checker) Run(ctx context.Context) {

@@ -1,0 +1,108 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # templ compiles .templ files to Go, and the generated Go is committed.
+      - name: Install templ
+        run: make tools
+
+      - name: Verify gofmt
+        run: |
+          unformatted=$(gofmt -l $(git ls-files '*.go' | grep -v '_templ.go'))
+          if [ -n "${unformatted}" ]; then
+            echo "::error::These files need gofmt:"
+            echo "${unformatted}"
+            exit 1
+          fi
+
+      # A stale commit of the generated code is a real defect: the running app
+      # would not match the templates in the tree.
+      - name: Verify generated templates
+        run: |
+          make generate
+          if ! git diff --quiet -- '*_templ.go'; then
+            echo "::error::Generated templates are stale. Run 'make generate' and commit:"
+            git diff --name-only -- '*_templ.go'
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build ./...
+
+      # -race everywhere rather than a separate pass: the claim concurrency test
+      # is the reason the detector matters here, and it is cheap at this size.
+      - name: Test
+        run: go test -race -coverprofile=coverage.txt ./...
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage
+          path: coverage.txt
+          if-no-files-found: ignore
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # The linter reads the generated Go, so it has to exist before linting.
+      - name: Install templ
+        run: make tools
+
+      - name: Generate
+        run: make generate
+
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+
+  image:
+    name: Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # The Makefile stamps the version from the nearest v* tag.
+          fetch-depth: 0
+
+      # What actually ships is a container, not a binary — there is no
+      # goreleaser here. A Dockerfile can break while every test passes: a
+      # missing COPY, CGO creeping back in, a base image that moved. Built and
+      # not pushed; publishing is a deliberate act, not a side effect of green.
+      - name: Build the image
+        run: make image

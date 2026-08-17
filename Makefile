@@ -1,6 +1,9 @@
 TEMPL_VERSION := v0.3.1020
 IMAGE ?= wishbone:latest
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+# Release tags are v-prefixed, and the match glob is not optional: any other tag
+# in the repository would otherwise become the version stamped into the binary
+# and into every /static/ URL.
+VERSION ?= $(shell git describe --tags --match 'v[0-9]*' --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
 # templ compiles the .templ files to Go. Prefer one already on PATH; otherwise
@@ -63,7 +66,7 @@ fmt: ## gofmt the tree
 	gofmt -w $$(git ls-files '*.go' | grep -v '_templ.go')
 
 .PHONY: check
-check: fmt vet test ## Everything CI would run
+check: fmt vet test ## Format, vet and test — the local loop (fmt rewrites files)
 
 .PHONY: image
 image: ## Build the container image

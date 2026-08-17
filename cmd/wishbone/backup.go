@@ -164,7 +164,7 @@ func backupDatabase(dbPath, out string) error {
 	tmp := out + ".tmp"
 	_ = os.Remove(tmp)
 	if _, err := db.Exec(`VACUUM INTO ?`, tmp); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	// Rename last, so a partially written backup never appears under its final
@@ -190,7 +190,7 @@ func archiveImages(dir, out string) error {
 	}
 	defer func() {
 		f.Close()
-		os.Remove(tmp) // no-op once the rename below succeeds
+		_ = os.Remove(tmp) // no-op once the rename below succeeds
 	}()
 
 	gz := gzip.NewWriter(f)

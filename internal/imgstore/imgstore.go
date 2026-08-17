@@ -17,6 +17,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -66,7 +67,7 @@ func (s *Store) FetchAndStore(ctx context.Context, rawURL string) (*Stored, erro
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("imgstore: status %d", resp.StatusCode)
 	}
 	if resp.Truncated {
@@ -81,7 +82,7 @@ func (s *Store) FetchAndStore(ctx context.Context, rawURL string) (*Stored, erro
 func (s *Store) Store(raw []byte) (*Stored, error) {
 	img, format, err := image.Decode(bytes.NewReader(raw))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnsupportedImage, err)
+		return nil, fmt.Errorf("%w: %w", ErrUnsupportedImage, err)
 	}
 
 	canonical, mime, ext, err := encode(img, format)
@@ -201,7 +202,7 @@ func scaleLongEdge(img image.Image, longEdge int) image.Image {
 	if w <= longEdge && h <= longEdge {
 		return nil
 	}
-	nw, nh := w, h
+	var nw, nh int
 	if w >= h {
 		nw = longEdge
 		nh = h * longEdge / w

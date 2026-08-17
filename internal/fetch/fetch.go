@@ -301,15 +301,15 @@ func chromeTLSDialer(dialer *net.Dialer, opts Options, nextProtos ...string) fun
 			deadline = d
 		}
 		if err := conn.SetDeadline(deadline); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, err
 		}
 		if err := conn.HandshakeContext(ctx); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, err
 		}
 		if err := conn.SetDeadline(time.Time{}); err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, err
 		}
 
@@ -318,7 +318,7 @@ func chromeTLSDialer(dialer *net.Dialer, opts Options, nextProtos ...string) fun
 		// http2's error text keeps the fallback from depending on a string.
 		if len(nextProtos) > 0 && nextProtos[0] == "h2" &&
 			conn.ConnectionState().NegotiatedProtocol != "h2" {
-			conn.Close()
+			_ = conn.Close()
 			return nil, errNoHTTP2
 		}
 		return conn, nil
