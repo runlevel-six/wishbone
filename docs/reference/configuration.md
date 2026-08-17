@@ -119,6 +119,7 @@ logs a warning; nobody can sign in until they are supplied.
 | `wishbone backup` | Periodic backup loop. Flags: `-dest -interval -keep -db -images -once -list -dump` |
 | `wishbone backup -once` | Take one backup and exit; non-zero on failure |
 | `wishbone backup -list` | List existing backups — the substitute for `ls` in a shell-less image |
+| `wishbone backup -verify FILE` | Open a backup and report integrity, row counts and the claim invariant. Non-zero exit if it is not sound. `latest` resolves to the newest database backup |
 | `wishbone backup -dump FILE` | Stream one backup to stdout — the substitute for `kubectl cp`, which needs `tar`. `latest` / `latest-images` resolve to the newest of each kind, avoiding the UTC-vs-local date trap |
 | `wishbone set-password -user U` | Set a temporary password, force a change at next sign-in, sign out that account's other sessions |
 | `wishbone hash-password` | Read a password from stdin, print an argon2id hash |

@@ -80,9 +80,24 @@ main argument for putting that claim on a shared filesystem.
 A backup you have not opened is a guess:
 
 ```sh
-sqlite3 app-2026-11-01.db "PRAGMA integrity_check;"
-sqlite3 app-2026-11-01.db "SELECT COUNT(*) FROM users;"
+# in the pod, against whatever the sidecar wrote most recently
+kubectl -n $NS exec deploy/wishbone -c backup -- /wishbone backup -verify latest
+
+# or against a file you have pulled off the cluster
+wishbone backup -verify ./app-2026-11-01.db
 ```
+
+It runs `PRAGMA integrity_check`, prints row counts, checks the claim invariant
+from [the data model](../reference/data-model.md), and **exits non-zero** if the
+integrity check fails or the counts disagree — so it works in a script as well as
+by eye.
+
+This is a subcommand rather than an `sqlite3` invocation for a reason found by
+running this procedure for real: `sqlite3` is not in the scratch image, which is
+the same reason the sidecar exists at all, and it is not necessarily on the
+machine you reach for mid-incident either. The binary already links SQLite. If
+you do have `sqlite3` to hand, `PRAGMA integrity_check;` on the file is the same
+check.
 
 Better still, restore it into a local instance and click around:
 
@@ -99,6 +114,16 @@ schema by the restore itself.
 
 Restoring replaces the live database, so the app must not be writing while you
 do it.
+
+**Check the claim names first.** The overrides below name `wishbone-data` and
+`wishbone-backup`, which is what a fresh install creates — but a volume cannot be
+renamed in place, so an instance that predates a rename keeps whatever its claims
+were called and pins them in its own overlay. Get it wrong and the temporary pod
+sits `Pending` with nothing obvious in its events:
+
+```sh
+kubectl -n $NS get pvc
+```
 
 ```sh
 # 1. Stop the writer.
@@ -136,3 +161,18 @@ A restore rolls everything back to the backup's timestamp — including claims.
 If someone claimed a present in the window you are rewinding past, that claim
 is gone and the item looks available again. Nobody is told. In December, say
 something.
+
+## When this was last exercised
+
+**2026-08-17.** Streamed the day's database and image archive off the cluster,
+verified the file, restored it into a local instance and signed in.
+
+What it found: `sqlite3` was not available where the old verify step assumed it
+(now `backup -verify`), and the restore procedure named claim names that do not
+match every instance (now a step that checks). Everything else in this document
+worked as written, and the dump itself took under a second.
+
+What was confirmed present in the restore: every list and item, all 24 stored
+images serving their bytes, the claim invariant intact, migrations applied on
+start, and an unauthenticated image request still refused. Re-run this after the
+importer, which is the first operation that can damage real data.

@@ -44,6 +44,7 @@ func backupCmd(args []string) error {
 		once     = fs.Bool("once", false, "take one backup and exit")
 		list     = fs.Bool("list", false, "list existing backups and exit")
 		dump     = fs.String("dump", "", "write one backup file to stdout and exit; \"latest\" or \"latest-images\" resolve to the newest of that kind")
+		verify   = fs.String("verify", "", "open a backup and report on it, then exit; accepts a file in -dest, an absolute path, or \"latest\"")
 	)
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -57,6 +58,9 @@ func backupCmd(args []string) error {
 	}
 	if *dump != "" {
 		return dumpBackup(*dest, *dump, os.Stdout)
+	}
+	if *verify != "" {
+		return verifyBackup(*dest, *verify, os.Stdout)
 	}
 
 	log := newLogger(env("WISHBONE_LOG_LEVEL", "info")).With(slog.String("component", "backup"))
@@ -388,4 +392,80 @@ func envDuration(key string, def time.Duration) time.Duration {
 		}
 	}
 	return def
+}
+
+// verifyBackup opens a backup and says whether it is worth keeping.
+//
+// This exists because the restore how-to used to open with
+// `sqlite3 app-....db "PRAGMA integrity_check;"`, and sqlite3 is exactly what is
+// not available where it is needed: not in this scratch image, which the same
+// document explains three paragraphs earlier, and not necessarily on the laptop
+// somebody reaches for during an incident. The binary already links SQLite, so
+// the check belongs here. A restore drill found this; nothing else would have.
+//
+// Read-only, and it never touches the live database unless you point it there.
+func verifyBackup(dir, name string, out io.Writer) error {
+	if name == "latest" {
+		resolved, err := newestMatching(dir, dailyDBRe)
+		if err != nil {
+			return err
+		}
+		name = resolved
+	}
+	path := name
+	if filepath.Base(name) == name {
+		path = filepath.Join(dir, name)
+	}
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+
+	// mode=ro so a corrupt file cannot be "repaired" into looking fine, and so
+	// this is safe to run against a file something else is writing.
+	sqldb, err := sql.Open("sqlite", "file:"+path+"?mode=ro")
+	if err != nil {
+		return err
+	}
+	defer sqldb.Close()
+
+	fmt.Fprintf(out, "%s\n", path)
+
+	var integrity string
+	if err := sqldb.QueryRow(`PRAGMA integrity_check`).Scan(&integrity); err != nil {
+		return fmt.Errorf("integrity_check: %w", err)
+	}
+	fmt.Fprintf(out, "  %-24s %s\n", "integrity_check", integrity)
+
+	counts := []struct{ label, query string }{
+		{"users", `SELECT COUNT(*) FROM users`},
+		{"lists", `SELECT COUNT(*) FROM lists`},
+		{"items", `SELECT COUNT(*) FROM items WHERE deleted_at IS NULL`},
+		{"items removed", `SELECT COUNT(*) FROM items WHERE deleted_at IS NOT NULL`},
+		{"claims", `SELECT COUNT(*) FROM claims`},
+		{"images", `SELECT COUNT(*) FROM item_images`},
+		{"migrations applied", `SELECT COUNT(*) FROM schema_migrations`},
+	}
+	for _, c := range counts {
+		var n int
+		if err := sqldb.QueryRow(c.query).Scan(&n); err != nil {
+			return fmt.Errorf("%s: %w", c.label, err)
+		}
+		fmt.Fprintf(out, "  %-24s %d\n", c.label, n)
+	}
+
+	// The §2.1 invariant. A backup that restores a database whose claimed counts
+	// disagree with its claim rows restores the bug with it, and this is the
+	// cheapest moment to notice.
+	var drift int
+	if err := sqldb.QueryRow(`SELECT COUNT(*) FROM items i
+	     WHERE i.claimed_qty <> (SELECT COALESCE(SUM(c.qty), 0) FROM claims c WHERE c.item_id = i.id)`).
+		Scan(&drift); err != nil {
+		return fmt.Errorf("claim invariant: %w", err)
+	}
+	fmt.Fprintf(out, "  %-24s %d\n", "claim invariant drift", drift)
+
+	if integrity != "ok" || drift != 0 {
+		return errors.New("this backup has problems; do not restore it without looking")
+	}
+	return nil
 }
