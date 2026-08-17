@@ -124,6 +124,11 @@ came from it, and recording one page's price against another page's URL is the
 provenance mistake `field_sources` exists to prevent. The address the person
 pasted is still kept as `URLRaw`.
 
+A canonical tag is an assertion about indexing, which is why the gate above is
+so hedged. A page can also make the stronger claim that this address is simply
+not where the product is — see [redirects that never reach the status
+line](#redirects-that-never-reach-the-status-line), which is resolved first.
+
 ## JSON-LD that is not in a script tag
 
 A Next.js App Router page does not serve its JSON-LD as a `<script>`. It serves
@@ -162,6 +167,54 @@ publishes both is taken at its word. When a payload describes several products
 and none of them claims this page's address, nothing is recovered — half the
 fields are still available from OpenGraph, and a wrong price is not recoverable
 at all, because nobody re-checks a field that looks filled in.
+
+## Redirects that never reach the status line
+
+The same payload can carry a redirect. A server component redirects by
+throwing, and on a streamed response the `200` and the opening shell are already
+sent by the time it does — there is no status line left to change. So the
+redirect is written into the payload as an error digest instead:
+
+```js
+20:E{"digest":"NEXT_REDIRECT;replace;https://shop.example.com/p/real-slug/ID.html;307;"}
+```
+
+React's runtime acts on it in the browser. Nothing that does not execute
+JavaScript ever leaves the first address.
+
+Retailers keep aliases for product paths — an older slug, or one spelled with
+the punctuation of the product name rather than the brand prefix the site
+settled on — and an alias is exactly what this mechanism serves. Asking for one
+returns a complete 1 MB `200`: navigation shell, mega-menu, dozens of payload
+chunks, an unresolved Suspense boundary where the product should be, and the
+digest. No title, no OpenGraph, no JSON-LD, and the string `price` not present
+once in the megabyte. Every tier correctly reports nothing, the soft-404 guard
+has nothing to doubt, and the form comes back blank with no explanation — while
+the address in the digest carries the full `Product` node.
+
+So `Service.Fetch` asks the payload whether it redirected, and if it did, fetches
+that address instead. This runs **before** canonical follow-through, because
+everything the canonical logic reasons about would otherwise be read off a page
+that was never the product. The gate:
+
+- Only when the first pass produced **no title and no price**. A payload carries
+  the errors of every segment that threw, not only the page's own, so a page
+  that described something is not overruled by one of them.
+- Only **one destination**. Two digests naming two addresses is a guess, and
+  refusing leaves a blank form, which is recoverable; landing on the wrong
+  product is not.
+- Same host only, via the same resolution as `CanonicalAlternative` — the digest
+  is content written by the page being examined.
+- **One hop.** The second page's payload is not consulted for a further
+  redirect, so two aliases naming each other cannot loop.
+- Whatever that address answers is adopted, **including a refusal**. The shop
+  named it as the product's own, so it is the only address that can speak for
+  the product, and "the shop refused" is a truer report than a blank form. A
+  transport error is different — nothing was answered, so the first result
+  stands.
+
+The destination becomes the stored `url`, since that is where the fields came
+from; the pasted address stays as `url_raw`.
 
 ## Soft-404 guard
 
@@ -207,6 +260,16 @@ are no more browser-like than Go's, that check was on the headers alone.
 A department store chain refuses all of that — full header set, browser
 `Accept`, brotli, and a retry carrying the cookies from its own 403 — from the
 same machine whose browser loads the page fine. What it inspects is below HTTP.
+
+One header in that set is a cliff rather than a nicety. **`Accept-Language` must
+carry a value**: omitting it or sending it empty is a flat 403 from the same
+filter, deterministically, on requests that are otherwise byte-for-byte the ones
+it answers 200 to — measured 6 for 6 against 15 for 15. Browsers always send
+one, so a request claiming to be Chrome without it contradicts itself. `fetch.New`
+therefore fills the field in from `fetch.DefaultAcceptLanguage` when Options
+leaves it unset, which is also the default `WISHD_FETCH_ACCEPT_LANGUAGE`
+documents; setting that variable to a real value is supported, and there is no
+way to send none.
 
 ### When a retailer inspects the handshake
 
@@ -367,6 +430,7 @@ TLS and header fingerprint, so a laptop tells you nothing.
 | Dead product link | Correctly flagged `suspect` on three independent signals, nothing auto-filled | unchanged |
 | Single-page storefront with `og:type: website` on product pages | Title, SKU, brand and image from JSON-LD; **no price**, because the storefront renders it client-side and no server-side extractor can see it. Earlier releases also flagged these pages suspect on the og:type alone — a false positive fixed by requiring corroboration | unchanged |
 | Department store, legacy path for a product that also has a canonical slug | The legacy rendering is a complete 1 MB `200` with an OpenGraph title, no JSON-LD anywhere in it, and the string `price` not present once. Title only. With canonical follow-through: full price, SKU and brand from the canonical rendering, at the cost of one extra request | unchanged — the follow-up already produced a price, so tier 5 is skipped |
+| Department store alias of a product path | Nothing at all: a 1 MB `200` shell whose only mention of the product is a `NEXT_REDIRECT` digest in the payload. Blank form, no warning, nothing wrong with the link. With the streamed-redirect hop: title, price, SKU, brand and image from the address the digest names, at the cost of one extra request | unchanged — the hop produces a price, so tier 5 is skipped |
 | Department store publishing `ProductGroup` with a client-side price | Title, description, brand, group SKU and images from the group; **no price** — every variant is published as `"0.00"` until script fills the real one in, and that zero is refused rather than stored. Before `ProductGroup` was accepted the tier yielded nothing, and the page was wrongly warned about as not a product page | No change. Reaching this price needs a tier that runs the page's JavaScript, and the bundled wrapper's library is cheerio over `node-fetch` — HTML parsing on a plain HTTP response, with per-site rules but no browser engine |
 
 The marketplace row is the entire argument for the sidecar, and it is a

@@ -62,7 +62,7 @@ func Load() (*Config, error) {
 		FetchEnabled:           envBool("WISHD_FETCH_ENABLED", true),
 		FetchUserAgent: env("WISHD_FETCH_USER_AGENT",
 			"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
-		FetchLang: env("WISHD_FETCH_ACCEPT_LANGUAGE", "en-US,en;q=0.9"),
+		FetchLang: env("WISHD_FETCH_ACCEPT_LANGUAGE", fetch.DefaultAcceptLanguage),
 		FetchImpersonate: strings.ToLower(strings.TrimSpace(
 			env("WISHD_FETCH_IMPERSONATE", ""))),
 		SidecarURL:     strings.TrimRight(env("EXTRACTOR_SIDECAR_URL", ""), "/"),

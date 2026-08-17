@@ -133,17 +133,29 @@ func ApplySoft404Guard(res *Result, page *Page) {
 // address guard, but a canonical tag is input written by the page being
 // examined, and no honest one points at another site.
 func CanonicalAlternative(canonical, fetched string) string {
-	canonical = strings.TrimSpace(canonical)
-	if canonical == "" || fetched == "" {
+	return sameSiteAlternative(canonical, fetched)
+}
+
+// sameSiteAlternative resolves an address a page named for itself against the
+// address actually fetched, and returns it normalized — or "" when it is not a
+// different address on the same site.
+//
+// Shared by the two things a page can say about where it really lives: the
+// canonical tag above, and the streamed redirect in flightredirect.go. Both are
+// input written by the page being examined, and the same-host rule is what
+// keeps either from sending the fetcher somewhere else entirely.
+func sameSiteAlternative(ref, fetched string) string {
+	ref = strings.TrimSpace(ref)
+	if ref == "" || fetched == "" {
 		return ""
 	}
 	base, err := url.Parse(fetched)
 	if err != nil {
 		return ""
 	}
-	// Resolved against the base so a relative canonical — common enough —
+	// Resolved against the base so a relative reference — common enough —
 	// works, and so a scheme-relative one cannot change host silently.
-	cu, err := base.Parse(canonical)
+	cu, err := base.Parse(ref)
 	if err != nil || !strings.EqualFold(cu.Host, base.Host) {
 		return ""
 	}

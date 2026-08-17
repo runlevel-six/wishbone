@@ -67,6 +67,19 @@ const (
 	ImpersonateChrome = "chrome"
 )
 
+// DefaultAcceptLanguage is sent when Options leaves it unset, and is the
+// default the configuration documents.
+//
+// It is a default rather than an optional field because absent is not neutral.
+// A department store's bot filter answers 403 to every request that omits this
+// header or sends it empty, and 200 to the identical request — same address,
+// same Chrome ClientHello, same everything else — that sends this value:
+// deterministically, 6 for 6 against 15 for 15. Browsers always send one, so a
+// request claiming to be Chrome without it is a contradiction of exactly the
+// kind applyBrowserHeaders exists to avoid. Leaving the field empty cost an
+// hour of chasing an intermittent block that was never intermittent.
+const DefaultAcceptLanguage = "en-US,en;q=0.9"
+
 type Client struct {
 	http *http.Client
 	opts Options
@@ -84,6 +97,9 @@ func New(opts Options) *Client {
 	}
 	if opts.UserAgent == "" {
 		opts.UserAgent = "wishd/1.0"
+	}
+	if opts.AcceptLanguage == "" {
+		opts.AcceptLanguage = DefaultAcceptLanguage
 	}
 
 	dialer := &net.Dialer{

@@ -64,6 +64,45 @@ func TestPageRequestLooksLikeANavigation(t *testing.T) {
 	}
 }
 
+// TestAcceptLanguageIsNeverEmpty guards a measured cliff, not a preference. A
+// department store's filter answers 403 to every request that omits this header
+// or sends it empty, and 200 to the identical request that sends a value —
+// deterministically, from the same address behind the same Chrome ClientHello.
+// Options that leave the field unset used to send an empty one, so a caller
+// building a client by hand got blocked for a reason nothing reported.
+func TestAcceptLanguageIsNeverEmpty(t *testing.T) {
+	h := captureHeaders(t, chromeUA, "text/html", "text/html")
+
+	if got := h.Get("Accept-Language"); got != fetch.DefaultAcceptLanguage {
+		t.Errorf("Accept-Language = %q, want the default %q",
+			got, fetch.DefaultAcceptLanguage)
+	}
+}
+
+// TestAcceptLanguageConfigurable: the default fills a gap, it does not override
+// a deployment that asked for something else.
+func TestAcceptLanguageConfigurable(t *testing.T) {
+	var got http.Header
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Clone()
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte("<html></html>"))
+	}))
+	defer srv.Close()
+
+	client := fetch.New(fetch.Options{
+		AllowLoopback:  true,
+		UserAgent:      chromeUA,
+		AcceptLanguage: "de-DE,de;q=0.9",
+	})
+	if _, err := client.Get(context.Background(), srv.URL, "text/html", "text/html", 1<<20); err != nil {
+		t.Fatalf("fetch: %v", err)
+	}
+	if v := got.Get("Accept-Language"); v != "de-DE,de;q=0.9" {
+		t.Errorf("Accept-Language = %q, want the configured value", v)
+	}
+}
+
 // TestImageRequestLooksLikeASubresource: an image is not a navigation, and
 // claiming it is would be its own inconsistency.
 func TestImageRequestLooksLikeASubresource(t *testing.T) {

@@ -76,6 +76,15 @@ func (p *Preview) Blocked() bool { return p.Result != nil && p.Result.Blocked }
 // brand. Nothing was blocked and nothing was wrong with the link, so no amount
 // of work on the tiers reaches a price that was never sent. Asking the page
 // where it lives, and asking that address instead, is what gets it.
+//
+// A page can say where it lives in two ways, and they are not the same claim. A
+// canonical tag is an assertion about indexing, which is why following one is
+// hedged about so carefully below. A streamed redirect is a redirect: the shop
+// is saying this address is not where the product is, and it would have said so
+// with a status code if it had still had one to send. That one is followed
+// first, because everything the canonical logic reasons about — the price, the
+// identifying segment, whether the second page is an improvement — is being
+// read off a page that was never the product to begin with.
 func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 	if !s.Enabled() {
 		return nil, ErrDisabled
@@ -88,6 +97,17 @@ func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 	got, err := s.fetchOnce(ctx, normalized)
 	if err != nil {
 		return nil, err
+	}
+	if alt := streamedRedirectFollowUp(got); alt != "" {
+		// Adopted whatever it answers, including a refusal: the shop named this
+		// address as the product's own, so it is the only one that can speak
+		// for the product. A first pass that reached here had nothing to lose —
+		// no title and no price — and "the shop refused" is a truer report of
+		// that than a blank form with no explanation. A transport error is
+		// different: nothing was answered, so the first result still stands.
+		if second, err := s.fetchOnce(ctx, alt); err == nil {
+			got = second
+		}
 	}
 	if alt := canonicalFollowUp(got); alt != "" {
 		// One extra hop, never a chain of them: the second fetch's own canonical
@@ -112,6 +132,7 @@ func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 type fetched struct {
 	requested *url.URL // what this pass asked for, normalized
 	url       string   // where it landed, normalized after redirects
+	page      *Page
 	res       *Result
 	status    int
 	bytes     int
@@ -142,10 +163,37 @@ func (s *Service) fetchOnce(ctx context.Context, normalized string) (*fetched, e
 	return &fetched{
 		requested: requested,
 		url:       AfterFetch(normalized, resp.FinalURL),
+		page:      page,
 		res:       res,
 		status:    resp.StatusCode,
 		bytes:     len(resp.Body),
 	}, nil
+}
+
+// streamedRedirectFollowUp returns the address a streamed server component
+// redirected to, or "" to keep what the first pass produced.
+//
+// The gate is narrower than the redirect itself deserves, deliberately. A
+// payload carries the errors of every segment that threw, not only the page's
+// own, so this only acts when the first pass came back with nothing a person
+// could use — no title and no price. That is the shape the case actually has:
+// an alias path answers with the navigation shell and an unresolved boundary
+// where the product should be. A page that produced fields is a page describing
+// something, and it is not overruled by an error found further down its own
+// payload.
+func streamedRedirectFollowUp(got *fetched) string {
+	if got == nil || got.res == nil || got.page == nil {
+		return ""
+	}
+	if got.res.Blocked || got.status >= 400 {
+		return ""
+	}
+	if got.res.Title != "" || got.res.PriceCents != nil {
+		return ""
+	}
+	// One hop: the second page's own payload is not consulted for a further
+	// redirect, so a pair of aliases pointing at each other cannot loop.
+	return sameSiteAlternative(flightRedirect(got.page.FlightChunks), got.url)
 }
 
 // canonicalFollowUp returns the address to re-ask, or "" to keep what the first
