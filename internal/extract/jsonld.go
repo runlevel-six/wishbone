@@ -7,7 +7,8 @@ import (
 	"strings"
 )
 
-// JSONLD is tier 2: application/ld+json blocks with @type: Product.
+// JSONLD is tier 2: application/ld+json blocks with @type Product or
+// ProductGroup.
 type JSONLD struct{}
 
 func (JSONLD) Name() string          { return SourceJSONLD }
@@ -55,7 +56,7 @@ func jsonldProducts(p *Page) []map[string]any {
 			continue // one malformed block must not fail the tier
 		}
 		for _, node := range flattenLD(doc) {
-			if !isType(node, "Product") {
+			if !isProductNode(node) {
 				continue
 			}
 			claimed := nodeURL(node)
@@ -103,10 +104,25 @@ func isType(node map[string]any, want string) bool {
 	return false
 }
 
+// isProductNode reports whether a JSON-LD node describes the thing on sale.
+//
+// ProductGroup is the type a retailer publishes when one page sells one garment
+// in ten colors: the group carries the name, brand and group id, and each
+// color hangs off hasVariant as a Product of its own. Requiring @type Product
+// skipped those pages entirely — no title, no brand, no code — and an empty
+// structured tier then reads downstream as "no structured product data here",
+// which is how a real product page ends up warned about as not being one.
+func isProductNode(node map[string]any) bool {
+	return isType(node, "Product") || isType(node, "ProductGroup")
+}
+
 func applyProduct(p *Page, node map[string]any, f *Fields) {
 	f.Title = firstNonEmpty(f.Title, str(node["name"]))
 	f.Description = firstNonEmpty(f.Description, str(node["description"]))
-	f.SKU = firstNonEmpty(f.SKU, str(node["sku"]), str(node["mpn"]))
+	// productGroupID identifies the group the way sku identifies a variant. It
+	// is preferred over any one variant's sku, which would name a color nobody
+	// chose.
+	f.SKU = firstNonEmpty(f.SKU, str(node["sku"]), str(node["mpn"]), str(node["productGroupID"]))
 	f.Brand = firstNonEmpty(f.Brand, brandName(node["brand"]))
 	if c := str(node["color"]); c != "" {
 		f.Attributes["color"] = c
@@ -131,13 +147,16 @@ func applyProduct(p *Page, node map[string]any, f *Fields) {
 	}
 	f.ImageURLs = dedupeStrings(f.ImageURLs)
 
+	applyOffers(node, f)
+	applyVariants(p, node, f)
+}
+
+func applyOffers(node map[string]any, f *Fields) {
 	for _, offer := range append(objectsOf(node["offers"]), objectsOf(node["Offers"])...) {
 		if isType(offer, "AggregateOffer") {
-			if v := firstNonEmpty(str(offer["lowPrice"]), str(offer["price"])); v != "" && f.PriceCents == nil {
-				f.PriceCents, _ = ParsePriceCents(v)
-			}
-		} else if v := str(offer["price"]); v != "" && f.PriceCents == nil {
-			f.PriceCents, _ = ParsePriceCents(v)
+			setPrice(f, firstNonEmpty(str(offer["lowPrice"]), str(offer["price"])))
+		} else {
+			setPrice(f, str(offer["price"]))
 		}
 		if cur := NormalizeCurrency(str(offer["priceCurrency"])); cur != "" && f.Currency == "" {
 			f.Currency = cur
@@ -145,6 +164,68 @@ func applyProduct(p *Page, node map[string]any, f *Fields) {
 		if f.PriceCents != nil && f.Currency != "" {
 			break
 		}
+	}
+}
+
+// applyVariants reads what a ProductGroup keeps in hasVariant rather than on
+// itself: an image, and the cheapest price actually being asked for one of the
+// variants — the same "from" figure AggregateOffer.lowPrice carries, and the
+// only honest single number for a page selling ten things at possibly ten
+// prices.
+//
+// Variant attributes are deliberately not merged. A group that variesBy color
+// has no color, and picking one because it was listed first is how a wishlist
+// promises gray and gets navy. The exception is a group with exactly one
+// variant, where there is nothing to guess between.
+func applyVariants(p *Page, node map[string]any, f *Fields) {
+	variants := objectsOf(node["hasVariant"])
+	if len(variants) == 0 {
+		return
+	}
+	if len(variants) == 1 {
+		applyProduct(p, variants[0], f)
+		return
+	}
+	for _, v := range variants {
+		var cheapest Fields
+		applyOffers(v, &cheapest)
+		if cheapest.PriceCents != nil && (f.PriceCents == nil || *cheapest.PriceCents < *f.PriceCents) {
+			f.PriceCents = cheapest.PriceCents
+		}
+		if f.Currency == "" {
+			f.Currency = cheapest.Currency
+		}
+		if len(f.ImageURLs) == 0 {
+			for _, img := range stringsOf(v["image"]) {
+				if u := p.ResolveURL(img); u != "" {
+					f.ImageURLs = append(f.ImageURLs, u)
+				}
+			}
+		}
+	}
+}
+
+// setPrice records a price only if it is a real one, and never overwrites a
+// price already found.
+//
+// A published "0.00" is not a free product, it is the field a retailer fills in
+// when the real number is fetched by script after the page loads. Taking it
+// literally puts a $0.00 item on a wishlist, which reads as a bug to everyone
+// who sees it and is worse than the honest blank the guard would otherwise
+// prompt about.
+func setPrice(f *Fields, raw string) {
+	if f.PriceCents != nil || strings.TrimSpace(raw) == "" {
+		return
+	}
+	cents, currency := ParsePriceCents(raw)
+	if cents == nil || *cents <= 0 {
+		return
+	}
+	f.PriceCents = cents
+	// A symbol in the amount ("$24.99") names the currency as well as any
+	// priceCurrency field does, and some offers carry only the one.
+	if f.Currency == "" {
+		f.Currency = NormalizeCurrency(currency)
 	}
 }
 

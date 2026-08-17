@@ -44,7 +44,7 @@ winning tier for each field is recorded in `items.field_sources`.
 | # | Tier | Applies to | Yields |
 |---|---|---|---|
 | 1 | Shopify JSON | paths containing `/products/{handle}` | title, description, vendor, all images, price (cheapest variant), SKU and option values when there is exactly one variant |
-| 2 | JSON-LD | any page with `application/ld+json` | `name`, `description`, `image`, `offers.price`, `offers.priceCurrency`, `brand`, `sku`, `color`, `size` |
+| 2 | JSON-LD | any page with `application/ld+json` | `name`, `description`, `image`, `offers.price`, `offers.priceCurrency`, `brand`, `sku`, `color`, `size`; `ProductGroup` adds `productGroupID` and `hasVariant` |
 | 3 | Microdata | head-level `itemprop` metas | same shape as JSON-LD |
 | 4 | OpenGraph | any page | `og:title`, `og:description`, `og:image:secure_url` (preferred over `og:image`), `product:price:*`, `og:type` |
 | 5 | Sidecar | any page, only when configured | title, a free-text price, an image — per-site handling for marketplaces |
@@ -65,6 +65,64 @@ Notes:
   than it is a product name.
 - Tier 5 is skipped when the earlier tiers already produced both a title and a
   price.
+- A price of zero is never recorded. Retailers that fetch the real number by
+  script after load publish `"price": "0.00"` in the meantime, and a $0.00 item
+  on a list is worse than a blank one.
+
+## ProductGroup
+
+A retailer selling one item in several colors or sizes usually publishes a
+single `ProductGroup` node rather than a `Product`: the group carries the name,
+brand, description and `productGroupID`, and each variation hangs off
+`hasVariant` as a `Product` of its own.
+
+Tier 2 accepts both types. What it takes from a group with more than one
+variant is deliberately limited:
+
+| Field | Taken from |
+|---|---|
+| Title, description, brand | the group |
+| SKU | `productGroupID`, never a variant's `sku` — that names one color nobody chose |
+| Price | the **cheapest variant that has a real one**, which is what `AggregateOffer.lowPrice` means elsewhere |
+| Image | the group's, or the first variant's if the group has none |
+| `color`, `size`, `material` | **nothing** — a group that `variesBy` color has no color, and picking the first listed is how a list promises gray and gets navy |
+
+A group with exactly one variant is read as that variant, attributes included:
+there is nothing to guess between.
+
+Accepting only `@type: Product` previously meant these pages yielded no
+structured fields at all. The knock-on effect was worse than the missing data:
+with no structured product to corroborate it, the soft-404 guard saw
+`og:type: website` and warned that a real product page was not a product page.
+
+## Canonical follow-through
+
+One address can have two renderings. A retailer may serve a legacy or campaign
+path as a complete `200` document that carries an OpenGraph title and no
+structured data whatsoever, while the slug it declares canonical carries the
+full `Product` node with the price, SKU and brand. Nothing is blocked, nothing
+redirects, and no work on the tiers reaches a price that was never sent.
+
+So when a lookup comes back **without a price** and the page names a canonical,
+`Service.Fetch` asks that address instead. The gate is narrow on purpose:
+
+- Only when the price is missing. A page that gave one is not second-guessed,
+  and the common case stays at one request.
+- Only when the canonical **still carries the identifying segment** of the
+  address asked for — the product id or listing code. Same id with a different
+  slug is one product spelled two ways. A different id is a different product,
+  and that stays a suggestion the owner accepts by hand (see
+  [Soft-404 guard](#soft-404-guard)).
+- Same host only, via `CanonicalAlternative`.
+- **One hop.** The second page's own canonical is not followed, so two pages
+  naming each other cannot loop.
+- The result is used only if it is better: it must have a price and a title, and
+  must not be blocked or suspect. Otherwise the first result stands.
+
+When the follow-up wins, the canonical address is what gets stored — the fields
+came from it, and recording one page's price against another page's URL is the
+provenance mistake `field_sources` exists to prevent. The address the person
+pasted is still kept as `URLRaw`.
 
 ## JSON-LD that is not in a script tag
 
@@ -248,6 +306,11 @@ host** and differs from what was already fetched. Same-host is a hard rule: the
 canonical tag is written by the page under examination, and the re-lookup would
 otherwise let it aim the fetcher anywhere.
 
+This button is for a canonical that names a *different* product. A canonical
+that names the same product at a different slug is followed automatically when
+the price is missing — see [Canonical follow-through](#canonical-follow-through)
+— and never reaches this prompt.
+
 The picture found on a suspect page is described, never rendered — an `<img>`
 pointed at the retailer would leak the viewer's IP, which is the whole reason
 images are proxied.
@@ -303,6 +366,8 @@ TLS and header fingerprint, so a laptop tells you nothing.
 | Large marketplace | Description only. The page loads and parses, but carries no product metadata for non-browser clients | Title, price and image recovered; description still from OpenGraph. Adds ~2.3s |
 | Dead product link | Correctly flagged `suspect` on three independent signals, nothing auto-filled | unchanged |
 | Single-page storefront with `og:type: website` on product pages | Title, SKU, brand and image from JSON-LD; **no price**, because the storefront renders it client-side and no server-side extractor can see it. Earlier releases also flagged these pages suspect on the og:type alone — a false positive fixed by requiring corroboration | unchanged |
+| Department store, legacy path for a product that also has a canonical slug | The legacy rendering is a complete 1 MB `200` with an OpenGraph title, no JSON-LD anywhere in it, and the string `price` not present once. Title only. With canonical follow-through: full price, SKU and brand from the canonical rendering, at the cost of one extra request | unchanged — the follow-up already produced a price, so tier 5 is skipped |
+| Department store publishing `ProductGroup` with a client-side price | Title, description, brand, group SKU and images from the group; **no price** — every variant is published as `"0.00"` until script fills the real one in, and that zero is refused rather than stored. Before `ProductGroup` was accepted the tier yielded nothing, and the page was wrongly warned about as not a product page | No change. Reaching this price needs a tier that runs the page's JavaScript, and the bundled wrapper's library is cheerio over `node-fetch` — HTML parsing on a plain HTTP response, with per-site rules but no browser engine |
 
 The marketplace row is the entire argument for the sidecar, and it is a
 regression against the app Wishbone replaces if you skip it.
