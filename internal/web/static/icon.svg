@@ -1,9 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Wishbone">
-  <rect width="32" height="32" rx="7" fill="#1f6b4f"/>
-  <!-- A furcula: two legs splaying from a joint at the bottom. Drawn as a
-       single stroked path with round caps so it stays legible at 32px. -->
-  <path d="M11.4 6.6 C8.2 7.6 7.4 11.4 9.4 15 C11.4 18.6 14.6 20.8 16 26.2
-           C17.4 20.8 20.6 18.6 22.6 15 C24.6 11.4 23.8 7.6 20.6 6.6"
-        fill="none" stroke="#f7f5f2" stroke-width="3.1"
-        stroke-linecap="round" stroke-linejoin="round"/>
+  <rect width="32" height="32" rx="7" fill="#1F4D3A"/>
+  <!-- A ribbon bow whose two tails are a furcula: they leave the knot at a wide
+       angle and end in rounded tips, so the mark reads as a bow at 192px and as
+       a wishbone at 32px, where the loops close up into a thickened top. The
+       tails are long on purpose — shortening them leaves an ordinary bow.
+
+       Only the left half is authored; the right half is the same two paths
+       under a mirror transform, so the mark cannot drift lopsided. The numbers
+       below are the same ones in tools/icongen/main.go, which draws the PNG
+       sizes a manifest needs — change one and change the other. -->
+  <g fill="none" stroke="#F7EFE4" stroke-width="2.4"
+     stroke-linecap="round" stroke-linejoin="round">
+    <g>
+      <path d="M15.8 12.2 C12.2 7.0 8.2 4.6 6.8 8.0 C5.8 10.8 10.8 12.2 15.4 12.6"/>
+      <path d="M16.3 12.9 C13.8 14.6 10.6 20.4 10.1 25.4"/>
+    </g>
+    <g transform="matrix(-1 0 0 1 32 0)">
+      <path d="M15.8 12.2 C12.2 7.0 8.2 4.6 6.8 8.0 C5.8 10.8 10.8 12.2 15.4 12.6"/>
+      <path d="M16.3 12.9 C13.8 14.6 10.6 20.4 10.1 25.4"/>
+    </g>
+  </g>
 </svg>

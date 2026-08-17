@@ -23,22 +23,57 @@ import (
 // Geometry in the SVG's 32-unit coordinate space.
 const (
 	viewBox     = 32.0
-	strokeWidth = 3.1
+	strokeWidth = 2.4
 )
 
-// The furcula: two legs splaying from a joint at the bottom, as cubic beziers.
-var legs = [][6]float64{
-	{8.2, 7.6, 7.4, 11.4, 9.4, 15},     // left leg, upper curve
-	{11.4, 18.6, 14.6, 20.8, 16, 26.2}, // left leg down to the joint
-	{17.4, 20.8, 20.6, 18.6, 22.6, 15}, // right leg up
-	{24.6, 11.4, 23.8, 7.6, 20.6, 6.6}, // right leg tip
+// subpath is one stroked run: a start point and a list of cubic beziers, each
+// {c1x, c1y, c2x, c2y, x, y}.
+type subpath struct {
+	x, y  float64
+	curve [][6]float64
 }
 
-const startX, startY = 11.4, 6.6
+// mirror reflects a subpath across the vertical centre line, which is where the
+// mark's symmetry comes from: the left half is authored once and the right half
+// is this function. Hand-authoring both halves is how a bow ends up subtly
+// lopsided.
+func (p subpath) mirror() subpath {
+	m := subpath{x: viewBox - p.x, y: p.y}
+	for _, c := range p.curve {
+		m.curve = append(m.curve,
+			[6]float64{viewBox - c[0], c[1], viewBox - c[2], c[3], viewBox - c[4], c[5]})
+	}
+	return m
+}
+
+// The left half of a ribbon bow: a loop from the knot out to the upper left and
+// back, and a tail descending from the knot with a rounded tip. Mirrored, the
+// two tails splay from the knot as a furcula — which is the whole point of the
+// mark, so they are long and they stay long. Shortening them leaves an ordinary
+// bow and takes the wishbone out of it.
+//
+// Each run is stroked on its own rather than chained into one path. A bow
+// crosses itself at the knot, and a single self-intersecting outline makes the
+// stroker fill the wrong side of it: the first attempt at this rendered a blob.
+var halfBow = []subpath{
+	{ // the loop: out to the upper left and back, enclosing an open eye
+		x: 15.8, y: 12.2,
+		curve: [][6]float64{
+			{12.2, 7.0, 8.2, 4.6, 6.8, 8.0},     // upper edge, arcing high
+			{5.8, 10.8, 10.8, 12.2, 15.4, 12.6}, // lower edge, back to the knot
+		},
+	},
+	{ // the tail: down and out, crossing its twin just under the knot
+		x: 16.3, y: 12.9,
+		curve: [][6]float64{
+			{13.8, 14.6, 10.6, 20.4, 10.1, 25.4},
+		},
+	},
+}
 
 var (
-	green = color.RGBA{0x1f, 0x6b, 0x4f, 0xff}
-	bone  = color.RGBA{0xf7, 0xf5, 0xf2, 0xff}
+	green   = color.RGBA{0x1f, 0x4d, 0x3a, 0xff}
+	ribbonC = color.RGBA{0xf7, 0xef, 0xe4, 0xff}
 )
 
 func main() {
@@ -71,19 +106,21 @@ func main() {
 			return rasterx.ToFixedP(x*s+offset, y*s+offset)
 		}
 
-		scanner := rasterx.NewScannerGV(t.size, t.size, img, img.Bounds())
-		scanner.SetColor(bone)
-		stroker := rasterx.NewStroker(t.size, t.size, scanner)
-		stroker.SetStroke(
-			fixed.Int26_6(strokeWidth*s*64), 4*64,
-			rasterx.RoundCap, rasterx.RoundCap, rasterx.RoundGap, rasterx.ArcClip)
+		for _, p := range halves() {
+			scanner := rasterx.NewScannerGV(t.size, t.size, img, img.Bounds())
+			scanner.SetColor(ribbonC)
+			stroker := rasterx.NewStroker(t.size, t.size, scanner)
+			stroker.SetStroke(
+				fixed.Int26_6(strokeWidth*s*64), 4*64,
+				rasterx.RoundCap, rasterx.RoundCap, rasterx.RoundGap, rasterx.ArcClip)
 
-		stroker.Start(at(startX, startY))
-		for _, c := range legs {
-			stroker.CubeBezier(at(c[0], c[1]), at(c[2], c[3]), at(c[4], c[5]))
+			stroker.Start(at(p.x, p.y))
+			for _, c := range p.curve {
+				stroker.CubeBezier(at(c[0], c[1]), at(c[2], c[3]), at(c[4], c[5]))
+			}
+			stroker.Stop(false)
+			stroker.Draw()
 		}
-		stroker.Stop(false)
-		stroker.Draw()
 
 		f, err := os.Create(out + "/" + t.name)
 		if err != nil {
@@ -95,4 +132,13 @@ func main() {
 		f.Close()
 		fmt.Printf("wrote %s (%dx%d, maskable=%v)\n", t.name, t.size, t.size, t.maskable)
 	}
+}
+
+// halves returns the authored left half plus its mirror image.
+func halves() []subpath {
+	out := make([]subpath, 0, len(halfBow)*2)
+	for _, p := range halfBow {
+		out = append(out, p, p.mirror())
+	}
+	return out
 }

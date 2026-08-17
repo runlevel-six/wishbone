@@ -16,8 +16,16 @@ go run . ../../internal/web/static
 It draws the geometry directly rather than rasterizing `icon.svg`, because
 oksvg does not scale stroke widths with the render target, and fattening the
 stroke in the SVG to compensate would break it in browsers, which scale it
-correctly. **The path in `main.go` mirrors `icon.svg` by hand — change one and
-change the other.**
+correctly. **The coordinates in `main.go` are the same numbers as `icon.svg` —
+change one and change the other.**
+
+Two things about the shape are load-bearing:
+
+* Only the left half is authored; the right half is its mirror. Hand-authoring
+  both is how a bow ends up subtly lopsided.
+* The loops and tails are stroked as **separate sub-paths**. A bow crosses itself
+  at the knot, and a single self-intersecting outline makes the stroker fill the
+  wrong side of it — the first attempt rendered a solid blob.
 
 Outputs, all full-bleed because every platform applies its own mask:
 

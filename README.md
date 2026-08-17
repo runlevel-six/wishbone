@@ -1,10 +1,9 @@
-# wishbone — Wishbone
+<p align="center">
+  <img src="docs/assets/wordmark.png" alt="Wishbone — private wishlists, shared joy" width="620">
+</p>
 
 A self-hosted wishlist app for a small, closed group of people who buy each
 other presents. Everyone has an account; nothing is public.
-
-The repo, module, binary and Kubernetes objects are all `wishbone`. Everything a
-person reads in the app says **Wishbone**.
 
 ## What it does
 

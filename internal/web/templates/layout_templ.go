@@ -67,7 +67,7 @@ func Layout(p Page) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</title><link rel=\"stylesheet\" href=\"/static/app.css\"><link rel=\"icon\" href=\"/static/icon.svg\" type=\"image/svg+xml\"><link rel=\"manifest\" href=\"/static/manifest.webmanifest\"><meta name=\"theme-color\" content=\"#1f6b4f\"><link rel=\"apple-touch-icon\" href=\"/static/apple-touch-icon.png\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-title\" content=\"Wishbone\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\"><script src=\"/static/htmx.min.js\" defer></script><script src=\"/static/app.js\" defer></script></head><body hx-headers=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</title><link rel=\"stylesheet\" href=\"/static/app.css\"><link rel=\"icon\" href=\"/static/icon.svg\" type=\"image/svg+xml\"><link rel=\"manifest\" href=\"/static/manifest.webmanifest\"><meta name=\"theme-color\" content=\"#1F4D3A\"><link rel=\"apple-touch-icon\" href=\"/static/apple-touch-icon.png\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-title\" content=\"Wishbone\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\"><script src=\"/static/htmx.min.js\" defer></script><script src=\"/static/app.js\" defer></script></head><body hx-headers=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -360,7 +360,7 @@ func Bare(p Page) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</title><link rel=\"stylesheet\" href=\"/static/app.css\"><link rel=\"icon\" href=\"/static/icon.svg\" type=\"image/svg+xml\"><link rel=\"manifest\" href=\"/static/manifest.webmanifest\"><meta name=\"theme-color\" content=\"#1f6b4f\"><link rel=\"apple-touch-icon\" href=\"/static/apple-touch-icon.png\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-title\" content=\"Wishbone\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\"></head><body class=\"centered\"><main class=\"card narrow\"><h1 class=\"brand-title\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</title><link rel=\"stylesheet\" href=\"/static/app.css\"><link rel=\"icon\" href=\"/static/icon.svg\" type=\"image/svg+xml\"><link rel=\"manifest\" href=\"/static/manifest.webmanifest\"><meta name=\"theme-color\" content=\"#1F4D3A\"><link rel=\"apple-touch-icon\" href=\"/static/apple-touch-icon.png\"><meta name=\"apple-mobile-web-app-capable\" content=\"yes\"><meta name=\"apple-mobile-web-app-title\" content=\"Wishbone\"><meta name=\"apple-mobile-web-app-status-bar-style\" content=\"default\"></head><body class=\"centered\"><main class=\"card narrow\"><h1 class=\"brand-title\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

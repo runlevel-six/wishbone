@@ -1,7 +1,14 @@
 # Wishbone documentation
 
-Documentation for `wishbone`, the daemon behind Wishbone — a self-hosted wishlist
-app for a small, closed group of people who buy each other presents.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: light)" srcset="assets/logo-light.png">
+    <img src="assets/logo-dark.png" alt="" width="120">
+  </picture>
+</p>
+
+Documentation for Wishbone — a self-hosted wishlist app for a small, closed
+group of people who buy each other presents.
 
 These docs follow [Diátaxis](https://diataxis.fr): four kinds of documentation,
 kept separate because they answer different questions. Start with whichever

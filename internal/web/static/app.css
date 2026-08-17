@@ -1,20 +1,26 @@
 /* Wishbone — one hand-written stylesheet, no framework, no build step. */
 
 :root {
-	--bg: #f7f5f2;
-	--surface: #ffffff;
-	--ink: #22201d;
-	--muted: #6c655c;
-	--line: #e2ddd5;
-	--accent: #1f6b4f;
-	--accent-ink: #ffffff;
-	--warn-bg: #fdf3dc;
-	--warn-line: #e6c565;
-	--error-bg: #fbe9e7;
-	--error-line: #d98070;
-	--ok-bg: #e7f3ec;
-	--ok-line: #7fb79a;
-	--info-bg: #e9eef6;
+	/* The logo's two colours: green #1F4D3A, cream #F7EFE4. Everything else is
+	   derived from them, which is why the greys lean warm — a neutral grey next
+	   to this cream reads as dirty. */
+	--bg: #f7efe4;
+	--surface: #fffaf3;
+	--ink: #1c2420;
+	--muted: #6b6b60;
+	--line: #e3d8c8;
+	--accent: #1f4d3a;
+	--accent-ink: #f7efe4;
+	/* The wordmark's gold dot, used sparingly: unread counts and warnings. */
+	--gold: #c9a227;
+	--warn-bg: #faf0d8;
+	--warn-line: #d9b455;
+	--error-bg: #fbe7e2;
+	--error-line: #cf7a67;
+	--error-ink: #a63d28;
+	--ok-bg: #e4efe6;
+	--ok-line: #7ba98b;
+	--info-bg: #e8edf3;
 	--info-line: #8ba4c8;
 	--radius: 10px;
 	--shadow: 0 1px 2px rgba(30, 25, 20, .06), 0 4px 12px rgba(30, 25, 20, .04);
@@ -22,20 +28,34 @@
 
 @media (prefers-color-scheme: dark) {
 	:root {
-		--bg: #171614;
-		--surface: #201f1c;
-		--ink: #ece7e0;
-		--muted: #a49c92;
-		--line: #35322d;
-		--accent: #58b48c;
+		/* The dark ground is the logo's own near-black green rather than a
+		   neutral, so the icon sits in the page instead of on it.
+
+		   --accent is *lighter* here, and deliberately not #1F4D3A. The brand
+		   green is a fill colour: cream on it clears AA comfortably. As link or
+		   button text on a dark ground it is barely above the background. Fill
+		   and text are different jobs, so they get different values, and
+		   --accent-ink flips to the dark green to stay readable on the light
+		   fill. */
+		--bg: #101c17;
+		--surface: #17251f;
+		--ink: #ece5da;
+		--muted: #9aa39a;
+		--line: #2a3831;
+		--accent: #6fbf9b;
 		--accent-ink: #10241c;
-		--warn-bg: #342c18;
+		--gold: #e0bb52;
+		--warn-bg: #332c17;
 		--warn-line: #8a6f2c;
-		--error-bg: #3a231f;
+		--error-bg: #38221e;
 		--error-line: #a05a4c;
-		--ok-bg: #1d2f26;
+		/* Field errors are text, so this lightens too — the light-mode red was
+		   hardcoded here and sat barely above the old ground, let alone this
+		   one. */
+		--error-ink: #e79684;
+		--ok-bg: #192c22;
 		--ok-line: #43765c;
-		--info-bg: #1e2733;
+		--info-bg: #1c2631;
 		--info-line: #4c6a94;
 		--shadow: none;
 	}
@@ -145,7 +165,7 @@ h3 { font-size: 1rem; margin: 0 0 .35rem; }
 .muted { color: var(--muted); }
 .small { font-size: .85rem; }
 .hint { display: block; color: var(--muted); font-size: .85rem; margin-top: .25rem; }
-.error { display: block; color: #b1442f; font-size: .85rem; margin-top: .25rem; }
+.error { display: block; color: var(--error-ink); font-size: .85rem; margin-top: .25rem; }
 
 /* Lists -------------------------------------------------------------- */
 
@@ -219,7 +239,7 @@ pre.notes { font: inherit; }
 	padding: 0 .35rem;
 	border-radius: 99px;
 	background: var(--warn-bg);
-	border: 1px solid var(--warn-line);
+	border: 1px solid var(--gold);
 	color: var(--ink);
 	font-size: .75rem;
 	line-height: 1.4;
