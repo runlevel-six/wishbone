@@ -32,7 +32,7 @@ until they choose a password.
 | GET | `/account` | Profile and password forms |
 | POST | `/account/profile` | Change display name |
 | POST | `/account/password` | Change password; signs out all other sessions |
-| GET | `/claims` | Everything you have claimed, across lists |
+| GET | `/claims` | Everything you have claimed, across lists. Opening it is what "seen" means: it clears the unread count on **Claimed** and marks the rows that count was about |
 | GET | `/category-fields` | htmx partial: dynamic fields for a category |
 | GET | `/share-target` | Receives a link from a phone share sheet (`url`, `text`, `title`). Routes to the add-item form, a list picker, or a prompt to make a list |
 | POST | `/lists` | Create a list |

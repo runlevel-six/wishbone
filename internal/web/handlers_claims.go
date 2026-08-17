@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"wishd/internal/model"
+	"wishd/internal/store"
 	"wishd/internal/web/templates"
 )
 
@@ -162,6 +163,15 @@ func (s *Server) handleMyClaims(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
+	// Opening this page is what "seen" means, so the watermark moves here and
+	// the badge is gone by the time the chrome is built below. The old value is
+	// kept to mark the rows it was pointing at (plan §12).
+	watermark, err := s.st.MarkClaimsSeen(ctx, u.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+
 	var rows []templates.ClaimedRow
 	for _, c := range claimed {
 		rows = append(rows, templates.ClaimedRow{
@@ -174,6 +184,8 @@ func (s *Server) handleMyClaims(w http.ResponseWriter, r *http.Request) {
 			State:     c.Claim.State,
 			Note:      model.Deref(c.Claim.Note),
 			Removed:   c.Item.DeletedAt != nil,
+			EditedAt:  model.Deref(c.Item.EditedAt),
+			Changed:   store.ChangedSince(c.Item, c.Claim, watermark),
 		})
 	}
 	s.render(w, r, http.StatusOK, templates.Claims(s.page(w, r, "Claimed"), rows))

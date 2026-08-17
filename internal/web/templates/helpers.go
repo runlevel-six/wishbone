@@ -85,6 +85,13 @@ func friendlyDate(ts string) string {
 	return t.Local().Format("Jan 2, 2006")
 }
 
+// claimUpdatesTitle explains the badge without naming an item. The nav is on
+// every page including a list owner's own, and a tooltip is the wrong place to
+// start describing which of somebody's claims changed.
+func claimUpdatesTitle(n int) string {
+	return plural(n, "item you claimed has changed", "items you claimed have changed")
+}
+
 // addedLabel says when an item was added, relatively while that is the useful
 // framing and absolutely once it is not (plan §14).
 //

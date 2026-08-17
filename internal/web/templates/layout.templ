@@ -33,7 +33,12 @@ templ Layout(p Page) {
 					<a class="brand" href="/">{ ProductName }</a>
 					<nav>
 						<a href="/" class={ navClass(p.Path, "/") }>Lists</a>
-						<a href="/claims" class={ navClass(p.Path, "/claims") }>Claimed</a>
+						<a href="/claims" class={ navClass(p.Path, "/claims") }>
+							Claimed
+							if p.ClaimUpdates > 0 {
+								<span class="badge" title={ claimUpdatesTitle(p.ClaimUpdates) }>{ itoa(p.ClaimUpdates) }</span>
+							}
+						</a>
 						<a href="/account" class={ navClass(p.Path, "/account") }>Account</a>
 						if p.IsAdmin() {
 							<a href="/admin" class={ navClass(p.Path, "/admin") }>Admin</a>

@@ -31,6 +31,10 @@ type Page struct {
 	CSRF    string
 	Flashes []Flash
 	Path    string
+	// ClaimUpdates is how many items this person has claimed that the owner has
+	// edited or removed since they last looked (plan §12). Their own claims
+	// only; nothing here describes anyone else's.
+	ClaimUpdates int
 }
 
 func (p Page) IsAdmin() bool { return p.User != nil && p.User.IsAdmin }
@@ -184,6 +188,10 @@ type ClaimedRow struct {
 	State     string
 	Note      string
 	Removed   bool
+	// EditedAt is the owner's last edit, and Changed marks the rows the unread
+	// badge was counting: touched since this person last opened the page.
+	EditedAt string
+	Changed  bool
 }
 
 // AdminData is the admin page model.

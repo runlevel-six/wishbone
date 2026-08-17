@@ -1,0 +1,14 @@
+-- Plan §12: claimers need to find out when an owner edits or removes something
+-- they claimed. The markers already exist on the cards; what was missing was
+-- anything that draws attention to one, so a person had to re-read their claims
+-- to notice. This column is the "you have looked" watermark behind the unread
+-- count on the Claimed link.
+--
+-- Nullable with no default, deliberately: NULL means never looked, and the count
+-- treats it as the claim's own creation time, so an edit that happened before
+-- you claimed is not news and nobody gets a badge for history on upgrade.
+--
+-- Read and written only by the claimer's own request. It must never be shown to
+-- a list owner: whether a claimer has noticed an edit is claim-adjacent
+-- information about their interest (plan §3.2).
+ALTER TABLE users ADD COLUMN claims_seen_at TEXT;

@@ -27,6 +27,12 @@ templ Claims(p Page, rows []ClaimedRow) {
 							} else {
 								<span class="tag">claimed</span>
 							}
+							if r.Changed {
+								<span class="tag new">changed since you last looked</span>
+							}
+							if r.EditedAt != "" {
+								<span class="muted" title={ exactTimestamp(r.EditedAt) }>edited by owner</span>
+							}
 						</p>
 						if r.Removed {
 							<p class="flash flash-warn small">The owner has removed this item from their list.</p>

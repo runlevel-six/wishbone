@@ -343,6 +343,88 @@ func (s *Store) SetClaimNote(ctx context.Context, claimID, claimerID string, not
 	return nil
 }
 
+// ClaimUpdateCount counts the items a person has claimed that the owner has
+// edited or removed since that person last looked at their claims (plan §12).
+//
+// This is a claim read that takes no viewerID and cannot return ErrOwnerBlind,
+// which needs saying out loud in this file. It is not an exception to the
+// chokepoint: the row set is "claims whose claimer is you", and a list owner
+// cannot hold a claim on their own list because CreateClaim refuses one. So the
+// viewer and the claimer are the same person by construction, and there is no
+// owner whose surprises this could spoil. What it must never do is travel the
+// other way — the count belongs to the claimer's own chrome, and telling an
+// owner that somebody noticed their edit would leak the interest §3.2 protects.
+//
+// "Since they last looked" is the later of the watermark and the claim's own
+// creation, so an edit that predates the claim is not news, and an instance
+// upgrading to this column does not hand everyone a badge for history.
+//
+// String comparison is chronological here because every timestamp in the schema
+// is written by model.TimeString: UTC, RFC3339, second precision, fixed width.
+//
+// The comparison is strictly greater-than, so an edit landing in the same second
+// as the claim or the visit is not counted. That direction is deliberate: with
+// >=, an item edited during the same second as the visit would satisfy the test
+// on every later page load too, and a badge that cannot be cleared is a worse
+// bug than a one-second window where a notification is missed.
+func (s *Store) ClaimUpdateCount(ctx context.Context, claimerID string) (int, error) {
+	const q = `
+	SELECT COUNT(DISTINCT c.item_id)
+	  FROM claims c
+	  JOIN items i ON i.id = c.item_id
+	 WHERE c.claimer_id = ?
+	   AND ( COALESCE(i.edited_at, '')  > MAX(COALESCE(?, ''), c.created_at)
+	      OR COALESCE(i.deleted_at, '') > MAX(COALESCE(?, ''), c.created_at) )`
+
+	var seen *string
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT claims_seen_at FROM users WHERE id = ?`, claimerID).Scan(&seen); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	var n int
+	if err := s.db.QueryRowContext(ctx, q, claimerID, seen, seen).Scan(&n); err != nil {
+		return 0, err
+	}
+	return n, nil
+}
+
+// MarkClaimsSeen moves the watermark to now and returns where it was, so the
+// page that clears the badge can still say which rows the badge was about. A
+// count that points at a page with nothing marked on it is a nag rather than a
+// notification.
+func (s *Store) MarkClaimsSeen(ctx context.Context, claimerID string) (string, error) {
+	var previous *string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT claims_seen_at FROM users WHERE id = ?`, claimerID).Scan(&previous)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return "", err
+	}
+	if _, err := s.db.ExecContext(ctx,
+		`UPDATE users SET claims_seen_at = ? WHERE id = ?`,
+		model.TimeString(model.Now()), claimerID); err != nil {
+		return "", err
+	}
+	return model.Deref(previous), nil
+}
+
+// ChangedSince reports whether an owner touched this item after the later of the
+// viewer's watermark and the claim itself — the same rule ClaimUpdateCount
+// counts by, applied to one row so the page can mark it.
+func ChangedSince(item *model.Item, claim *model.Claim, watermark string) bool {
+	after := watermark
+	if claim != nil && claim.CreatedAt > after {
+		after = claim.CreatedAt
+	}
+	if item == nil {
+		return false
+	}
+	return model.Deref(item.EditedAt) > after || model.Deref(item.DeletedAt) > after
+}
+
 // prefixed rewrites a bare column list into a table-qualified one.
 func prefixed(cols, alias string) string {
 	parts := strings.Split(cols, ",")

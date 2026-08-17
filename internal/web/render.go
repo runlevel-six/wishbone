@@ -16,13 +16,26 @@ import (
 
 // page assembles the per-request chrome, consuming any pending flash.
 func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) templates.Page {
-	return templates.Page{
+	p := templates.Page{
 		Title:   title,
 		User:    userFrom(r.Context()),
 		CSRF:    csrfFrom(r.Context()),
 		Flashes: s.takeFlashes(w, r),
 		Path:    r.URL.Path,
 	}
+	// The unread count on the Claimed link (plan §12). It lives in the chrome
+	// because the whole point is to be seen from wherever the person happens to
+	// be, and it is about their own claims, so no page it appears on learns
+	// anything about anyone else's.
+	if p.User != nil {
+		if n, err := s.st.ClaimUpdateCount(r.Context(), p.User.ID); err != nil {
+			// A badge is not worth failing a page over.
+			s.log.Warn("claim update count", slog.Any("err", err))
+		} else {
+			p.ClaimUpdates = n
+		}
+	}
+	return p
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, status int, c templ.Component) {

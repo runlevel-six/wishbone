@@ -23,6 +23,7 @@ Conventions:
 | `is_admin` | INTEGER | |
 | `must_reset` | INTEGER | Confines the user to `/account` until cleared |
 | `created_at` | TEXT | |
+| `claims_seen_at` | TEXT NULL | When this person last opened their own claims page; drives the unread count on **Claimed**. NULL means never, and the count then measures from each claim's own creation, so nobody is handed a badge for history. Read and written only by that person's own request — never shown to a list owner |
 | `legacy_id` | TEXT NULL | For a future importer; nullable forever |
 
 ### `sessions`
