@@ -13,6 +13,8 @@
 	--accent-ink: #f7efe4;
 	/* The wordmark's gold dot, used sparingly: unread counts and warnings. */
 	--gold: #c9a227;
+	--link: #1f4d3a;
+	--link-visited: #4a6b5c;
 	--warn-bg: #faf0d8;
 	--warn-line: #d9b455;
 	--error-bg: #fbe7e2;
@@ -45,6 +47,8 @@
 		--accent: #6fbf9b;
 		--accent-ink: #10241c;
 		--gold: #e0bb52;
+		--link: #6fbf9b;
+		--link-visited: #85a596;
 		--warn-bg: #332c17;
 		--warn-line: #8a6f2c;
 		--error-bg: #38221e;
@@ -62,6 +66,27 @@
 }
 
 * { box-sizing: border-box; }
+
+/* Links.
+ *
+ * There was no rule here at all, so any link without a class of its own got the
+ * browser's blue and purple. Measured against the dark ground those are 1.86:1
+ * and 1.59:1 — not "a bit hard to read" but well under half the 4.5 AA floor,
+ * with the purple worse than the blue. Links now take the brand green, and
+ * visited takes a duller version of it: "which of these have I already looked
+ * at" is worth keeping, and the browser default was the only thing providing it.
+ *
+ * :where() so these carry no specificity at all. A bare a:visited outranks
+ * .brand and .list-name — one type plus one pseudo-class beats one class — and
+ * would have recoloured the brand and every list card the moment somebody
+ * clicked one. Wrapped this way any component rule wins without having to
+ * restate itself for the visited case.
+ *
+ * Underlining is left to the browser: a link in prose should have one, and the
+ * components that should not — nav, brand, list cards, buttons — already set
+ * their own text-decoration. */
+:where(a) { color: var(--link); }
+:where(a:visited) { color: var(--link-visited); }
 
 body {
 	margin: 0;
