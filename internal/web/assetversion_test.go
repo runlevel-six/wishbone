@@ -45,6 +45,38 @@ func TestAssetURLsCarryTheBuildVersion(t *testing.T) {
 	}
 }
 
+// TestFaviconIsRenderable is a regression guard with a specific cause behind it.
+//
+// Two brand changes shipped an SVG favicon that Gecko will not draw: with only a
+// viewBox and no intrinsic width or height there is nothing for it to paint, so
+// Firefox and its forks showed no icon at all — on desktop and on Android, since
+// both are the same engine — and cached the failure so they stopped asking. The
+// server was serving the file correctly the whole time, which is what made it
+// hard to see.
+func TestFaviconIsRenderable(t *testing.T) {
+	h := newHarness(t)
+
+	svg := h.get("/static/icon.svg", "").Body.String()
+	if !strings.Contains(svg, `width="32"`) || !strings.Contains(svg, `height="32"`) {
+		t.Error("icon.svg has no intrinsic size; Gecko renders nothing and remembers it")
+	}
+
+	// PNG fallbacks, so the icon does not depend on any one engine's SVG support.
+	body := h.get("/login", "").Body.String()
+	for _, want := range []string{
+		`type="image/png" sizes="32x32"`,
+		`type="image/png" sizes="192x192"`,
+		`type="image/svg+xml"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the head does not offer %s", want)
+		}
+	}
+	if code := h.get("/static/favicon-32.png", "").Code; code != http.StatusOK {
+		t.Errorf("favicon-32.png = %d, want 200", code)
+	}
+}
+
 // TestUnversionedAssetsStillWork: the version is a cache-busting token, not an
 // access check. A hand-typed URL or an older page still open in a tab must not
 // break.

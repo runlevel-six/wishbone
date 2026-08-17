@@ -1,4 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Wishbone">
+<!-- width and height are required, not decoration. Gecko will not render an SVG
+     favicon that has only a viewBox: with no intrinsic size there is nothing to
+     paint, so Firefox and its forks show no icon at all and remember the
+     failure, which is why this went unnoticed through two brand changes. Chrome
+     is happy either way. Keep both, and keep them equal to the viewBox. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"
+     role="img" aria-label="Wishbone">
   <rect width="32" height="32" rx="7" fill="#1F4D3A"/>
   <!-- A ribbon bow whose two tails are a furcula: they leave the knot at a wide
        angle and end in rounded tips, so the mark reads as a bow at 192px and as

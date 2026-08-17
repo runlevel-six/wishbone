@@ -84,6 +84,9 @@ func main() {
 		name     string
 		maskable bool
 	}{
+		// A plain 32px PNG so a browser that will not render the SVG still has
+		// an icon. Firefox needed one for years, and something always does.
+		{32, "favicon-32.png", false},
 		{192, "icon-192.png", false},
 		{512, "icon-512.png", false},
 		{512, "icon-512-maskable.png", true},

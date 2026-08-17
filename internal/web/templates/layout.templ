@@ -21,6 +21,11 @@ templ Layout(p Page) {
 			// a build is meant to be the only thing needed to retire the previous
 			// build's files.
 			<link rel="stylesheet" href={ asset("/static/app.css", p.Asset) }/>
+			// PNG first, SVG second, on purpose. A browser that cannot use the
+			// SVG has something to fall back to, and the ones that prefer SVG
+			// take it regardless of order.
+			<link rel="icon" type="image/png" sizes="32x32" href={ asset("/static/favicon-32.png", p.Asset) }/>
+			<link rel="icon" type="image/png" sizes="192x192" href={ asset("/static/icon-192.png", p.Asset) }/>
 			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
 			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
 			<meta name="theme-color" content="#1F4D3A"/>
@@ -83,6 +88,11 @@ templ Bare(p Page) {
 			// a build is meant to be the only thing needed to retire the previous
 			// build's files.
 			<link rel="stylesheet" href={ asset("/static/app.css", p.Asset) }/>
+			// PNG first, SVG second, on purpose. A browser that cannot use the
+			// SVG has something to fall back to, and the ones that prefer SVG
+			// take it regardless of order.
+			<link rel="icon" type="image/png" sizes="32x32" href={ asset("/static/favicon-32.png", p.Asset) }/>
+			<link rel="icon" type="image/png" sizes="192x192" href={ asset("/static/icon-192.png", p.Asset) }/>
 			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
 			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
 			<meta name="theme-color" content="#1F4D3A"/>
