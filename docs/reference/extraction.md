@@ -236,6 +236,26 @@ The result is marked **suspect** if any of these hold:
 | Nothing found | no price and no SKU, on a page where a tier that normally supplies them ran and produced the title |
 | Gone | HTTP 404 or 410 — marked `dead` rather than `suspect` |
 
+### A cross-host redirect is not a structural mismatch
+
+The path comparison above is made against **where the fetch landed**, not where it
+was aimed, whenever those are on different hosts. A cross-host redirect means the
+path namespace changed completely, and comparing a path in one namespace against a
+path in another carries no information.
+
+This is the common case, not a corner. A phone's share sheet hands over a shortened
+link — `a.co/d/08r00ya6` for one large marketplace — whose entire purpose is to
+resolve somewhere else, so the requested path can never contain the resolved path's
+identifying segment. Measured on the first real corpus: **three of three short links
+flagged suspect**, every one of them fine, with title, price and image read
+successfully and then discarded because the guard distrusted the result. The most
+common way to add an item was the one path that always warned.
+
+Same-host redirects are unchanged, which is the case the rule exists for: a product
+URL that quietly lands on a collection page. And dropping the path comparison does
+not make cross-host redirects trusted — a short link that resolves to a parked
+domain is still caught by the `og:type` and no-price-no-SKU signals.
+
 ## Refused requests are not suspect links
 
 Any other status ≥ 400 — 403, 429, 5xx — means the retailer declined to serve

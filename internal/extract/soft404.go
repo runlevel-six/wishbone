@@ -79,8 +79,28 @@ func ApplySoft404Guard(res *Result, page *Page) {
 
 	// 2. The final URL or canonical differs structurally from what was asked
 	//    for — the /products/… to /collections/… slide.
-	if requested != nil {
-		reqID := identifyingSegment(requested.Path)
+	//
+	// Judged against where the fetch landed, not where it was aimed, whenever
+	// those are on different hosts. A cross-host redirect means the path
+	// namespace changed completely, and comparing a path in one namespace to a
+	// path in another carries no information at all.
+	//
+	// This is not a corner case. A share sheet on a phone produces a shortened
+	// link — `a.co/d/08r00ya6` for one large marketplace — whose only purpose is
+	// to resolve somewhere else, so the requested path can never contain the
+	// resolved path's identifying segment. Every such link failed this test by
+	// construction: 100% of them in the first real corpus, all of them fine,
+	// with the title, price and image read successfully and then thrown away.
+	// The most common way to add an item was the one path that always warned.
+	//
+	// Same-host redirects are unchanged, which is the case this rule was written
+	// for: a product URL that quietly lands on a collection page.
+	judged := requested
+	if requested != nil && final != nil && !strings.EqualFold(requested.Host, final.Host) {
+		judged = final
+	}
+	if judged != nil {
+		reqID := identifyingSegment(judged.Path)
 		if reqID != "" {
 			if final != nil && !pathContains(final.Path, reqID) {
 				res.Suspect = true
@@ -95,7 +115,7 @@ func ApplySoft404Guard(res *Result, page *Page) {
 				}
 			}
 		}
-		if isProductPath(requested.Path) && final != nil && !isProductPath(final.Path) {
+		if isProductPath(judged.Path) && final != nil && !isProductPath(final.Path) {
 			res.Suspect = true
 			res.SuspectReason = append(res.SuspectReason,
 				"a product link resolved to a non-product page")
