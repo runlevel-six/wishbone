@@ -99,6 +99,27 @@ func (s *Store) RemovedClaimedItems(ctx context.Context, listID, viewerID string
 		  ORDER BY i.deleted_at DESC`, listID, viewerID)
 }
 
+// ItemsDueForLinkCheck returns items whose link has not been looked at since
+// before, oldest first, at most limit of them (plan §5.4).
+//
+// Never-checked items come first: link_status is written when an item is created
+// from a URL and then never revisited, so on the first sweep of an existing
+// instance everything is equally stale and the oldest thing on the oldest list
+// is the best guess at what has rotted.
+//
+// Soft-deleted items are skipped. Nobody is going to buy them, and spending
+// requests on a retailer's patience for a row that is only kept so a claimer can
+// be told it went away is the wrong trade.
+func (s *Store) ItemsDueForLinkCheck(ctx context.Context, before string, limit int) ([]*model.Item, error) {
+	return s.queryItems(ctx,
+		`SELECT `+itemCols+` FROM items
+		  WHERE deleted_at IS NULL
+		    AND url IS NOT NULL AND url <> ''
+		    AND (link_checked_at IS NULL OR link_checked_at < ?)
+		  ORDER BY link_checked_at IS NOT NULL, link_checked_at, created_at
+		  LIMIT ?`, before, limit)
+}
+
 // AuditItemsForList returns every item in a list, soft-deleted ones included.
 //
 // For the admin reconciliation report and nothing else (plan §13). "My claim

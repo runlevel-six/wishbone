@@ -53,6 +53,16 @@ type Config struct {
 	SidecarURL       string
 	SidecarTimeout   time.Duration
 
+	// Link health (plan §5.4). LinkCheckSpacing is the pause between items:
+	// the point of the job is to notice a dead link before Christmas, not to
+	// finish quickly, and one request every half minute from one address is a
+	// shape nothing objects to.
+	LinkCheckEnabled  bool
+	LinkCheckInterval time.Duration
+	LinkCheckBatch    int
+	LinkCheckAge      time.Duration
+	LinkCheckSpacing  time.Duration
+
 	LogLevel string
 }
 
@@ -74,7 +84,16 @@ func Load() (*Config, error) {
 			env("WISHBONE_FETCH_IMPERSONATE", ""))),
 		SidecarURL:     strings.TrimRight(env("EXTRACTOR_SIDECAR_URL", ""), "/"),
 		SidecarTimeout: envDuration("EXTRACTOR_SIDECAR_TIMEOUT", 10*time.Second),
-		LogLevel:       env("WISHBONE_LOG_LEVEL", "info"),
+		// The link-health job (plan §5.4). Off by default, like every other
+		// outbound-traffic feature here: a job that walks every item on a
+		// schedule is the traffic shape bot detection scores hardest, and losing
+		// that quietly is worse than not entering it. See internal/linkcheck.
+		LinkCheckEnabled:  envBool("WISHBONE_LINK_CHECK_ENABLED", false),
+		LinkCheckInterval: envDuration("WISHBONE_LINK_CHECK_INTERVAL", 24*time.Hour),
+		LinkCheckBatch:    envInt("WISHBONE_LINK_CHECK_BATCH", 20),
+		LinkCheckAge:      envDuration("WISHBONE_LINK_CHECK_AGE", 7*24*time.Hour),
+		LinkCheckSpacing:  envDuration("WISHBONE_LINK_CHECK_SPACING", 30*time.Second),
+		LogLevel:          env("WISHBONE_LOG_LEVEL", "info"),
 	}
 
 	c.DBPath = env("WISHBONE_DB_PATH", filepath.Join(c.DataDir, "app.db"))
@@ -138,6 +157,15 @@ func envBool(key string, def bool) bool {
 		return def
 	}
 	return b
+}
+
+func envInt(key string, def int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
 }
 
 func envDuration(key string, def time.Duration) time.Duration {

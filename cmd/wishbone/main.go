@@ -18,6 +18,7 @@ import (
 	"wishbone/internal/extract"
 	"wishbone/internal/fetch"
 	"wishbone/internal/imgstore"
+	"wishbone/internal/linkcheck"
 	"wishbone/internal/model"
 	"wishbone/internal/store"
 	"wishbone/internal/web"
@@ -139,6 +140,17 @@ func run() error {
 
 	go janitor(ctx, st, srv, log)
 
+	// The link-health job (plan §5.4), off unless enabled. It walks stored links
+	// slowly; see internal/linkcheck for why slowly is the point.
+	if cfg.LinkCheckEnabled {
+		go linkcheck.New(st, extractor, log, linkcheck.Options{
+			Interval: cfg.LinkCheckInterval,
+			Batch:    cfg.LinkCheckBatch,
+			Age:      cfg.LinkCheckAge,
+			Spacing:  cfg.LinkCheckSpacing,
+		}).Run(ctx)
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		log.Info("listening",
@@ -146,7 +158,8 @@ func run() error {
 			slog.String("addr", cfg.Addr),
 			slog.String("db", cfg.DBPath),
 			slog.Bool("fetch", cfg.FetchEnabled),
-			slog.Bool("sidecar", cfg.SidecarURL != ""))
+			slog.Bool("sidecar", cfg.SidecarURL != ""),
+			slog.Bool("link_check", cfg.LinkCheckEnabled))
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			errCh <- err
 		}

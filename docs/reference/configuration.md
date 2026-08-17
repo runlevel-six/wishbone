@@ -59,6 +59,32 @@ Fixed in code, not configurable: 5s total request timeout, 2s dial timeout, 5
 redirects maximum, 64 KiB response headers, 2 MiB page bodies, 5 MiB images,
 `text/html` required for pages, `image/*` required for images.
 
+## Link health
+
+Re-checks stored links so a dead one surfaces to the list owner before somebody
+tries to buy it. **Off by default**, for the same reason TLS impersonation is: a
+job walking every item from one address is the traffic shape bot detection scores
+hardest, and a cold request succeeding says nothing about sustained polling.
+
+| Variable | Default | Description |
+|---|---|---|
+| `WISHBONE_LINK_CHECK_ENABLED` | `false` | Master switch. Requires `WISHBONE_FETCH_ENABLED`; the job logs a warning and does not start without it |
+| `WISHBONE_LINK_CHECK_INTERVAL` | `24h` | Time between sweeps. Nothing is checked at startup, so a restart loop cannot become a request loop |
+| `WISHBONE_LINK_CHECK_BATCH` | `20` | Items per sweep, oldest check first, never-checked first of all |
+| `WISHBONE_LINK_CHECK_AGE` | `168h` (7 days) | Only re-check links nobody has looked at in this long |
+| `WISHBONE_LINK_CHECK_SPACING` | `30s` | Pause between items within a sweep |
+
+Only **404** and **410** mark a link `dead` — those are the shop saying the thing
+is gone. A refusal (403, 429), a server error, a timeout or a DNS failure records
+the attempt and **leaves the stored status alone**: none of them is evidence about
+the link, and saying otherwise tells people their good links are broken. Items
+that are soft-deleted or have no URL are skipped.
+
+The job runs the whole extraction pipeline rather than asking for a status code,
+because a dead product link often answers `200` — redirected to a collection page,
+or a shell with no product on it — which only the [soft-404
+guard](extraction.md#soft-404-guard) can judge.
+
 ## Backup sidecar
 
 Read by `wishbone backup`, which runs as a second container using the same image.

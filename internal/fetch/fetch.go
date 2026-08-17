@@ -67,6 +67,25 @@ const (
 	ImpersonateChrome = "chrome"
 )
 
+// ContentTypeError reports a response whose Content-Type was not what the caller
+// asked for.
+//
+// It carries the status code, because refusing to read a body does not make the
+// status meaningless. The link-health job's most valuable verdict is the shop
+// saying the thing is gone, and a bare 404 arrives with no content type at all or
+// with text/plain — so returning only "unexpected content type" threw away the
+// one fact worth having. errors.Is against ErrContentType still works.
+type ContentTypeError struct {
+	StatusCode  int
+	ContentType string
+}
+
+func (e *ContentTypeError) Error() string {
+	return fmt.Sprintf("%s: %q (status %d)", ErrContentType, e.ContentType, e.StatusCode)
+}
+
+func (e *ContentTypeError) Unwrap() error { return ErrContentType }
+
 // DefaultAcceptLanguage is sent when Options leaves it unset, and is the
 // default the configuration documents.
 //
@@ -206,7 +225,7 @@ func (c *Client) Get(ctx context.Context, rawURL, accept, wantPrefix string, max
 
 	ct := resp.Header.Get("Content-Type")
 	if wantPrefix != "" && !strings.HasPrefix(strings.ToLower(strings.TrimSpace(ct)), wantPrefix) {
-		return nil, fmt.Errorf("%w: %s", ErrContentType, ct)
+		return nil, &ContentTypeError{StatusCode: resp.StatusCode, ContentType: ct}
 	}
 
 	body, truncated, err := readLimited(resp.Body, maxBytes)
