@@ -97,11 +97,35 @@ main {
 }
 
 .brand {
+	display: flex;
+	align-items: center;
+	gap: .45rem;
 	font-weight: 700;
 	font-size: 1.15rem;
 	color: var(--ink);
 	text-decoration: none;
 	letter-spacing: -.01em;
+}
+
+/* The mark carries its own green tile, so it needs no treatment to sit on
+   either theme's header — only the corner radius, which the SVG draws at its own
+   scale and which has to be re-stated here for the browser's box. */
+.brand-mark {
+	display: block;
+	border-radius: 6px;
+	flex: none;
+}
+
+/* Sign-in and registration: the mark above the name, which is the only place in
+   the app with room for it at a size where the bow is legible. */
+.brand-lockup {
+	margin: 0 0 .5rem;
+	text-align: center;
+	line-height: 0;
+}
+
+.brand-lockup img {
+	border-radius: 14px;
 }
 
 .brand-title {

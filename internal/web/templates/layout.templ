@@ -41,7 +41,12 @@ templ Layout(p Page) {
 		<body hx-headers={ csrfHeader(p.CSRF) }>
 			if p.User != nil {
 				<header class="topbar">
-					<a class="brand" href="/">{ ProductName }</a>
+						<a class="brand" href="/">
+						// Decorative: the name is right beside it, so a screen
+						// reader announcing the mark too would only repeat itself.
+						<img class="brand-mark" src={ asset("/static/icon.svg", p.Asset) } alt="" width="26" height="26"/>
+						{ ProductName }
+					</a>
 					<nav>
 						<a href="/" class={ navClass(p.Path, "/") }>Lists</a>
 						<a href="/claims" class={ navClass(p.Path, "/claims") }>
@@ -105,6 +110,9 @@ templ Bare(p Page) {
 		</head>
 		<body class="centered">
 			<main class="card narrow">
+				<p class="brand-lockup">
+					<img src={ asset("/static/icon.svg", p.Asset) } alt="" width="64" height="64"/>
+				</p>
 				<h1 class="brand-title">{ ProductName }</h1>
 				for _, f := range p.Flashes {
 					<div class={ "flash", "flash-" + f.Kind } role="status">{ f.Text }</div>
