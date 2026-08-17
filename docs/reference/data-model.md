@@ -106,7 +106,7 @@ metadata, because product pages do not carry a reliable category signal.
 | `link_status` | TEXT | `unknown`, `ok`, `suspect`, `dead` |
 | `link_checked_at` | TEXT NULL | |
 | `sort_order` | INTEGER | Display order; never claim-derived |
-| `created_at`, `updated_at` | TEXT | |
+| `created_at`, `updated_at` | TEXT | `created_at` is shown on the card to everyone who can see the list, owner included — "Added today", "Added 3 weeks ago", then a plain date past a month. An importer must carry the original date over, not the import date |
 | `edited_at` | TEXT NULL | Last owner edit; drives the "edited by owner" marker claimers see |
 | `deleted_at` | TEXT NULL | Soft delete |
 | `legacy_id` | TEXT NULL | For a future importer |

@@ -85,6 +85,51 @@ func friendlyDate(ts string) string {
 	return t.Local().Format("Jan 2, 2006")
 }
 
+// addedLabel says when an item was added, relatively while that is the useful
+// framing and absolutely once it is not (plan §14).
+//
+// The point is a purchase decision, not a changelog. "Added 3 days ago" says
+// the owner still wants this; "Added March 12, 2024" says ask them before you
+// spend the money. A bare date does the first job badly and a bare age does the
+// second job badly, so the wording switches at the month mark, which is roughly
+// where an age stops being something people can picture.
+func addedLabel(ts string) string {
+	return addedLabelAt(ts, time.Now())
+}
+
+func addedLabelAt(ts string, now time.Time) string {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return ""
+	}
+	d := now.Sub(t)
+	switch {
+	case d < 0:
+		// A clock skew or a bad row. Say the date rather than "in -3 days".
+		return "Added " + t.Local().Format("January 2, 2006")
+	case d < 24*time.Hour:
+		return "Added today"
+	case d < 48*time.Hour:
+		return "Added yesterday"
+	case d < 7*24*time.Hour:
+		return "Added " + plural(int(d/(24*time.Hour)), "day ago", "days ago")
+	case d < 30*24*time.Hour:
+		return "Added " + plural(int(d/(7*24*time.Hour)), "week ago", "weeks ago")
+	default:
+		return "Added " + t.Local().Format("January 2, 2006")
+	}
+}
+
+// exactTimestamp is the full moment, for the title attribute behind a relative
+// label. Anyone who wants the precise answer can hover for it.
+func exactTimestamp(ts string) string {
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return ""
+	}
+	return t.Local().Format("January 2, 2006 at 3:04 PM")
+}
+
 // linkStatusNote is the owner-facing explanation of a link check. It is never
 // shown to claimers: a claimer seeing link warnings would leak nothing, but the
 // job that produces them runs per owner, and keeping the surface small keeps

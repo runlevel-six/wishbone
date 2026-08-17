@@ -74,6 +74,9 @@ templ OwnerItemCard(p Page, it view.OwnerItemView) {
 					if it.CategoryLabel != "" {
 						<span class="tag">{ it.CategoryLabel }</span>
 					}
+					if addedLabel(it.CreatedAt) != "" {
+						<span class="muted" title={ exactTimestamp(it.CreatedAt) }>{ addedLabel(it.CreatedAt) }</span>
+					}
 				</p>
 				if len(it.Attributes) > 0 {
 					<dl class="attrs">
@@ -140,6 +143,9 @@ templ ViewerItemCard(p Page, it view.ViewerItemView) {
 					}
 					if it.CategoryLabel != "" {
 						<span class="tag">{ it.CategoryLabel }</span>
+					}
+					if addedLabel(it.CreatedAt) != "" {
+						<span class="muted" title={ exactTimestamp(it.CreatedAt) }>{ addedLabel(it.CreatedAt) }</span>
 					}
 					if it.EditedAt != "" {
 						<span class="muted" title={ friendlyDate(it.EditedAt) }>edited by owner</span>

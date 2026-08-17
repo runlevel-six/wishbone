@@ -51,6 +51,13 @@ type ItemBase struct {
 	ImageSHA      string
 	SortOrder     int
 	EditedAt      string
+	// CreatedAt is when the owner added the item (plan §14). It belongs on the
+	// base rather than one audience's type because it is the same fact for
+	// everyone: it is owner-authored, it does not move when anything is claimed,
+	// and it is the one thing on a card that tells a buyer whether to check
+	// before buying. A list accumulates for years, and "added last week" and
+	// "added in 2021" are different purchases.
+	CreatedAt string
 }
 
 // OwnerItemView is what a list owner sees. It has no claim fields. Do not add
@@ -225,6 +232,7 @@ func (b *Builder) base(it *model.Item, cats map[string]*model.Category,
 		LinkStatus:  it.LinkStatus,
 		SortOrder:   it.SortOrder,
 		EditedAt:    model.Deref(it.EditedAt),
+		CreatedAt:   it.CreatedAt,
 	}
 	base.Host = hostOf(base.URL)
 	base.Price = FormatPrice(it.PriceCents, model.Deref(it.Currency))
