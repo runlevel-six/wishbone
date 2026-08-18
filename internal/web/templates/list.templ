@@ -25,14 +25,20 @@ templ ListView(p Page, d ListPageData) {
 			if len(d.Page.OwnerItems) == 0 {
 				<p class="muted">Nothing on this list yet.</p>
 			}
+			if len(d.Page.OwnerItems) > 1 {
+				@sortBar(d)
+			}
 			<ul class="items">
 				for _, it := range d.Page.OwnerItems {
-					@OwnerItemCard(p, it)
+					@OwnerItemCard(p, it, ownerCardOptions(d))
 				}
 			</ul>
 		} else {
 			if len(d.Page.ViewerItems) == 0 {
 				<p class="muted">This list is empty right now.</p>
+			}
+			if len(d.Page.ViewerItems) > 1 {
+				@sortBar(d)
 			}
 			<ul class="items">
 				for _, it := range d.Page.ViewerItems {
@@ -43,11 +49,35 @@ templ ListView(p Page, d ListPageData) {
 	}
 }
 
+// sortBar offers the orders a list can be read in.
+//
+// A plain GET form, so the chosen order lives in the URL: it survives the back
+// button, it can be sent to someone, and there is nothing to store. Every key it
+// sorts by is owner-authored, so this is the same control on your own list and on
+// somebody else's (plan §3.2).
+templ sortBar(d ListPageData) {
+	<form class="sortbar" method="get" action={ "/lists/" + d.Page.List.ID }>
+		<label class="inline-label">
+			Sort
+			<select name="sort" data-autosubmit>
+				for _, o := range sortOptions() {
+					<option value={ string(o.Value) } selected?={ d.Page.Sort == o.Value }>{ o.Label }</option>
+				}
+			</select>
+		</label>
+		<button class="button small" type="submit">Sort</button>
+		if d.Page.IsOwner && !reorderable(d.Page.Sort) {
+			<span class="muted small">Switch back to list order to move items up and down.</span>
+		}
+	</form>
+}
+
 // OwnerItemCard renders an item for the person who owns the list.
 //
 // The type it takes, view.OwnerItemView, has no claim fields on it at all
-// (plan §3.2). This template could not display claim state if it tried.
-templ OwnerItemCard(p Page, it view.OwnerItemView) {
+// (plan §3.2). This template could not display claim state if it tried, and
+// OwnerCardOptions is kept just as narrow for the same reason.
+templ OwnerItemCard(p Page, it view.OwnerItemView, o OwnerCardOptions) {
 	<li class="card item" id={ "item-" + it.ID }>
 		<div class="item-body">
 			if it.ImageSHA != "" {
@@ -95,16 +125,21 @@ templ OwnerItemCard(p Page, it view.OwnerItemView) {
 		</div>
 		<div class="item-actions">
 			<a class="button small" href={ templ.SafeURL("/items/" + it.ID + "/edit") }>Edit</a>
-			<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
-				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
-				<input type="hidden" name="dir" value="up"/>
-				<button class="button small" type="submit" title="Move up">&uarr;</button>
-			</form>
-			<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
-				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
-				<input type="hidden" name="dir" value="down"/>
-				<button class="button small" type="submit" title="Move down">&darr;</button>
-			</form>
+			if o.CanReorder {
+				<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<input type="hidden" name="dir" value="up"/>
+					<button class="button small" type="submit" title="Move up">&uarr;</button>
+				</form>
+				<form method="post" action={ "/items/" + it.ID + "/move" } class="inline">
+					<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+					<input type="hidden" name="dir" value="down"/>
+					<button class="button small" type="submit" title="Move down">&darr;</button>
+				</form>
+			}
+			if len(o.MoveTargets) > 0 {
+				@moveToList(p, it.ID, o)
+			}
 			<form method="post" action={ "/items/" + it.ID + "/delete" } class="inline"
 				data-confirm="Remove this item from your list?">
 				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
@@ -112,6 +147,27 @@ templ OwnerItemCard(p Page, it view.OwnerItemView) {
 			</form>
 		</div>
 	</li>
+}
+
+// moveToList sends one item to another of the owner's lists.
+//
+// The item keeps everything it has, claims included — they belong to the item,
+// not to the list it sits on. Nothing here varies with claim state, so using it
+// tells the owner nothing about who wanted what.
+templ moveToList(p Page, itemID string, o OwnerCardOptions) {
+	<form method="post" action={ "/items/" + itemID + "/move-to-list" } class="move">
+		<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+		<input type="hidden" name="sort" value={ string(o.Sort) }/>
+		<label class="inline-label">
+			Move to
+			<select name="list_id" aria-label="Move this item to another list">
+				for _, t := range o.MoveTargets {
+					<option value={ t.ID }>{ t.Name }</option>
+				}
+			</select>
+		</label>
+		<button class="button small" type="submit">Move</button>
+	</form>
 }
 
 // ViewerItemCard renders an item for everyone except the owner.

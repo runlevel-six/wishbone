@@ -102,17 +102,28 @@ type ListPage struct {
 	OwnerItems  []OwnerItemView
 	ViewerItems []ViewerItemView
 	SharedWith  []*model.User
+	// Sort is the order the items are in, so the page can show which one is
+	// active and an action can return to the same view.
+	Sort model.ItemSort
 }
 
-// BuildListPage assembles the list view for one viewer.
-func (b *Builder) BuildListPage(ctx context.Context, list *model.List, viewer *model.User) (*ListPage, error) {
+// BuildListPage assembles the list view for one viewer, in the order they asked
+// for.
+func (b *Builder) BuildListPage(ctx context.Context, list *model.List, viewer *model.User,
+	sort model.ItemSort) (*ListPage, error) {
+
 	owner, err := b.st.UserByID(ctx, list.OwnerID)
 	if err != nil {
 		return nil, err
 	}
-	page := &ListPage{List: list, OwnerName: owner.DisplayName, IsOwner: list.OwnerID == viewer.ID}
+	page := &ListPage{
+		List:      list,
+		OwnerName: owner.DisplayName,
+		IsOwner:   list.OwnerID == viewer.ID,
+		Sort:      sort,
+	}
 
-	items, err := b.st.LiveItemsForList(ctx, list.ID)
+	items, err := b.st.LiveItemsForListSorted(ctx, list.ID, sort)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +164,8 @@ func (b *Builder) BuildListPage(ctx context.Context, list *model.List, viewer *m
 		page.ViewerItems = append(page.ViewerItems, b.viewerItem(it, claims[it.ID], viewer.ID, cats, images))
 	}
 
+	// Items the owner removed sit after the live ones whatever the sort: they are
+	// a footnote about something that is gone, not part of what is on offer.
 	removed, err := b.st.RemovedClaimedItems(ctx, list.ID, viewer.ID)
 	if err != nil {
 		return nil, err

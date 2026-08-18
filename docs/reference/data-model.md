@@ -106,7 +106,7 @@ metadata, because product pages do not carry a reliable category signal.
 | `field_sources` | TEXT | JSON: field → `user`, `shopify`, `jsonld`, `microdata`, `og`, `sidecar` |
 | `link_status` | TEXT | `unknown`, `ok`, `suspect`, `dead` |
 | `link_checked_at` | TEXT NULL | |
-| `sort_order` | INTEGER | Display order; never claim-derived |
+| `sort_order` | INTEGER | Display order within `list_id`; never claim-derived. A reader may sort a list by price, added date or category instead, which is a request-scoped view option (`?sort=`) and is stored nowhere |
 | `created_at`, `updated_at` | TEXT | `created_at` is shown on the card to everyone who can see the list, owner included — "Added today", "Added 3 weeks ago", then a plain date past a month. An importer must carry the original date over, not the import date |
 | `edited_at` | TEXT NULL | Last owner edit; drives the "edited by owner" marker claimers see |
 | `deleted_at` | TEXT NULL | Soft delete |
@@ -114,6 +114,14 @@ metadata, because product pages do not carry a reliable category signal.
 
 Items with claims are soft-deleted; unclaimed items are removed outright. Both
 happen in one transaction so the owner cannot tell which occurred.
+
+An item can move to another list with the same owner: `list_id` changes,
+`sort_order` becomes the end of the destination, and `edited_at` is set so the
+people who claimed it get the same signal an edit gives them. Claim rows hang off
+`item_id`, so they are neither read nor touched by the move — they simply travel
+with the item, and whether the claimers can still see it is then a question about
+the destination's `visibility`. A destination owned by anyone else is refused as
+`ErrNotFound`.
 
 ### `item_images`
 

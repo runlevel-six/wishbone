@@ -81,6 +81,14 @@ func TestOwnerResponsesUnchangedByClaims(t *testing.T) {
 	paths := []string{
 		"/",
 		"/lists/" + h.list.ID,
+		// Every order a list can be read in, because a sort is exactly the kind of
+		// thing the plan §3.2 table warns about: an ordering that shifted once
+		// something was claimed would be a claim indicator, however quiet.
+		"/lists/" + h.list.ID + "?sort=price-asc",
+		"/lists/" + h.list.ID + "?sort=price-desc",
+		"/lists/" + h.list.ID + "?sort=added-new",
+		"/lists/" + h.list.ID + "?sort=added-old",
+		"/lists/" + h.list.ID + "?sort=category",
 		"/items/" + h.item.ID + "/edit",
 		"/claims",
 		"/admin",

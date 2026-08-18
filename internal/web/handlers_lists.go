@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -95,7 +96,7 @@ func (s *Server) handleViewList(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, r, err)
 		return
 	}
-	page, err := s.vb.BuildListPage(ctx, l, u)
+	page, err := s.vb.BuildListPage(ctx, l, u, model.ParseItemSort(r.URL.Query().Get("sort")))
 	if err != nil {
 		s.fail(w, r, err)
 		return
@@ -113,8 +114,14 @@ func (s *Server) handleViewList(w http.ResponseWriter, r *http.Request) {
 			s.fail(w, r, err)
 			return
 		}
+		mine, err := s.st.ListsOwnedBy(ctx, u.ID)
+		if err != nil {
+			s.fail(w, r, err)
+			return
+		}
 		data.AllUsers = users
 		data.SharedIDs = shared
+		data.MoveTargets = moveTargets(mine, l.ID)
 	}
 	s.render(w, r, http.StatusOK, templates.ListView(s.page(w, r, l.Name), data))
 }
@@ -180,6 +187,29 @@ func (s *Server) handleDeleteList(w http.ResponseWriter, r *http.Request) {
 	s.pruneBlobs(ctx, shas)
 	s.flash(w, templates.FlashOK, "List deleted.")
 	s.redirect(w, r, "/")
+}
+
+// moveTargets is the owner's other lists: everywhere an item on this list could
+// go. A visibility filter would be wrong here — moving something onto a private
+// list is a normal thing to want.
+func moveTargets(mine []*model.List, currentID string) []templates.MoveTarget {
+	var out []templates.MoveTarget
+	for _, l := range mine {
+		if l.ID == currentID {
+			continue
+		}
+		out = append(out, templates.MoveTarget{ID: l.ID, Name: l.Name})
+	}
+	return out
+}
+
+// listPath is where an action on a list page returns to, keeping a non-default
+// sort so the page comes back in the order the person was reading it in.
+func listPath(listID string, sort model.ItemSort) string {
+	if sort == model.SortManual {
+		return "/lists/" + listID
+	}
+	return "/lists/" + listID + "?sort=" + url.QueryEscape(string(sort))
 }
 
 func validVisibility(v string) bool {

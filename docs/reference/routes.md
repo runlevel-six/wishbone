@@ -36,7 +36,7 @@ until they choose a password.
 | GET | `/category-fields` | htmx partial: dynamic fields for a category |
 | GET | `/share-target` | Receives a link from a phone share sheet (`url`, `text`, `title`). Routes to the add-item form, a list picker, or a prompt to make a list |
 | POST | `/lists` | Create a list |
-| GET | `/lists/{listID}` | View a list. 404 unless visible to you |
+| GET | `/lists/{listID}` | View a list. 404 unless visible to you. `?sort=` reads it in another order: `manual` (default), `price-asc`, `price-desc`, `added-new`, `added-old`, `category`. Anything else falls back to `manual` |
 | POST | `/lists/{listID}` | Rename, change visibility, replace the share list. Owner only |
 | POST | `/lists/{listID}/delete` | Delete a list and its contents. Owner only |
 | GET | `/lists/{listID}/items/new` | Add-item form. Owner only |
@@ -47,6 +47,7 @@ until they choose a password.
 | POST | `/items/{itemID}` | Update an item. Owner only |
 | POST | `/items/{itemID}/delete` | Soft-delete if claimed, hard-delete if not. Owner only |
 | POST | `/items/{itemID}/move` | Reorder by one position (`dir=up`/`down`). Owner only |
+| POST | `/items/{itemID}/move-to-list` | Move the item to `list_id`, which must be another list the same person owns; 404 otherwise. Claims travel with the item, and the response never varies with them. Optional `sort` is the order to return to. Owner only |
 | POST | `/items/{itemID}/claims` | Claim `qty` units. **Refused for the list owner** |
 | POST | `/claims/{claimID}/release` | Release your own claim |
 | POST | `/claims/{claimID}/state` | `state=claimed`/`purchased`, your own claim |

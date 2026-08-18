@@ -93,6 +93,31 @@ which a size comparison alone would have missed.
 asserts that a *claimer* does see all the things the owner must not. Without
 it, deleting the claim UI entirely would make every blindness test pass.
 
+## Sorting and moving: features that had to be built around the rule
+
+Two ordinary conveniences run straight at the vectors above, and are worth
+looking at as worked examples.
+
+**Sorting a list** is an ordering that varies — the third bullet in the list of
+template-level failures. It is safe here because every key on offer is
+owner-authored: a price, the date the owner added the item, a category they
+chose. Nothing claim-derived is available to sort by, so the same control can be
+offered on your own list and on somebody else's. To keep it that way,
+`TestOwnerResponsesUnchangedByClaims` captures the owner's list in *every* sort
+order, before and after claims exist, and compares the bytes. A future sort that
+reached for a claim count would fail that test rather than ship quietly.
+
+**Moving an item to another list** touches an item that may already be claimed.
+It is built to be claim-blind rather than claim-aware: the store method reads no
+claim rows, counts nothing, and does the same work either way, because the claims
+hang off the item and travel with it for free. The confirmation is the same
+sentence whether or not anyone had claimed the thing — a message that appeared
+only for claimed items would be a claim indicator as surely as a counter is.
+
+The one thing it does say is about the *destination's* visibility: moving
+something onto a private list hides it from everyone. That is the owner's own
+setting, not anyone's claim, so they are told about it.
+
 ## The leaks that are accepted, and why
 
 **Reducing quantity below the claimed count is refused.** The owner is told

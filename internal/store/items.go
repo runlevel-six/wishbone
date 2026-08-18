@@ -78,14 +78,50 @@ func (s *Store) ItemByLegacyID(ctx context.Context, legacyID string) (*model.Ite
 	return scanItem(s.db.QueryRowContext(ctx, `SELECT `+itemCols+` FROM items WHERE legacy_id = ?`, legacyID))
 }
 
-// LiveItemsForList returns the visible (not soft-deleted) items in display
-// order. Ordering is by sort_order then created_at only — never by anything
-// claim-derived, which would leak (plan §3.2).
+// LiveItemsForList returns the visible (not soft-deleted) items in the owner's
+// own order.
 func (s *Store) LiveItemsForList(ctx context.Context, listID string) ([]*model.Item, error) {
+	return s.LiveItemsForListSorted(ctx, listID, model.SortManual)
+}
+
+// LiveItemsForListSorted is the same set in one of the orders a reader can ask
+// for. Every available key is owner-authored — position, price, when the owner
+// added it, the category they picked — and never anything claim-derived, which
+// would leak (plan §3.2).
+func (s *Store) LiveItemsForListSorted(ctx context.Context, listID string, sort model.ItemSort) ([]*model.Item, error) {
 	return s.queryItems(ctx,
-		`SELECT `+itemCols+` FROM items
-		  WHERE list_id = ? AND deleted_at IS NULL
-		  ORDER BY sort_order, created_at, id`, listID)
+		`SELECT `+prefixed(itemCols, "i")+` FROM items i
+		  LEFT JOIN categories c ON c.id = i.category_id
+		  WHERE i.list_id = ? AND i.deleted_at IS NULL
+		  ORDER BY `+itemOrderBy(sort), listID)
+}
+
+// itemOrderBy maps a sort onto SQL. It is a closed switch over constants with a
+// default, so nothing a reader supplies reaches the statement — ParseItemSort
+// clamps unknown values, and anything that slipped past it lands on the default.
+func itemOrderBy(sort model.ItemSort) string {
+	switch sort {
+	// Unpriced items sort last in both directions: an empty price field is the
+	// owner not having said anything, which is not the same as cheap. Cents are
+	// compared across currencies as plain integers, which is wrong in principle
+	// and irrelevant for one family buying in one currency.
+	case model.SortPriceAsc:
+		return `i.price_cents IS NULL, i.price_cents, i.sort_order, i.id`
+	case model.SortPriceDesc:
+		return `i.price_cents IS NULL, i.price_cents DESC, i.sort_order, i.id`
+	// created_at is stored to the second, so a batch of items added together
+	// ties. UUIDv7 ids break the tie in the same direction time runs.
+	case model.SortNewest:
+		return `i.created_at DESC, i.id DESC`
+	case model.SortOldest:
+		return `i.created_at, i.id`
+	// Uncategorized last, categories in the order the category table defines,
+	// and the owner's own order kept inside each group.
+	case model.SortCategory:
+		return `i.category_id IS NULL, c.sort_order, c.label, i.sort_order, i.id`
+	default:
+		return `i.sort_order, i.created_at, i.id`
+	}
 }
 
 // RemovedClaimedItems returns soft-deleted items in the list that the viewer
@@ -265,6 +301,63 @@ func (s *Store) MoveItem(ctx context.Context, listID, itemID string, up bool) er
 		ids[i] = it.ID
 	}
 	return s.ReorderItems(ctx, listID, ids)
+}
+
+// MoveItemToList moves an item to another list with the same owner. It is the
+// cross-list counterpart of MoveItem, which only shifts a position.
+//
+// Claims are not read, not counted and not touched. They hang off the item, so
+// they travel with it, and the outcome of this call is identical whether the
+// item is claimed or not — the owner learns nothing from having made the move
+// (plan §3.2). What can change for a claimer is whether they can still see the
+// item at all, because the destination carries its own visibility, so the move
+// is recorded as an owner edit: that is the signal an edit already gives them
+// (plan §12).
+//
+// The item lands at the end of the destination list. A destination that is not
+// the same owner's list is reported as ErrNotFound, like everything else that is
+// not yours to touch (plan §3.1).
+func (s *Store) MoveItemToList(ctx context.Context, itemID, destListID string) error {
+	now := model.TimeString(model.Now())
+	return s.write(ctx, func(q Querier) error {
+		var srcListID, ownerID string
+		err := q.QueryRowContext(ctx,
+			`SELECT l.id, l.owner_id FROM items i JOIN lists l ON l.id = i.list_id
+			  WHERE i.id = ? AND i.deleted_at IS NULL`, itemID).Scan(&srcListID, &ownerID)
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.ErrNotFound
+		}
+		if err != nil {
+			return err
+		}
+
+		var destOwnerID string
+		err = q.QueryRowContext(ctx,
+			`SELECT owner_id FROM lists WHERE id = ?`, destListID).Scan(&destOwnerID)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			return model.ErrNotFound
+		case err != nil:
+			return err
+		case destOwnerID != ownerID:
+			return model.ErrNotFound
+		}
+		if destListID == srcListID {
+			return nil
+		}
+
+		var last sql.NullInt64
+		if err := q.QueryRowContext(ctx,
+			`SELECT MAX(sort_order) FROM items WHERE list_id = ?`, destListID).Scan(&last); err != nil {
+			return err
+		}
+		_, err = q.ExecContext(ctx,
+			`UPDATE items
+			    SET list_id = ?, sort_order = ?, updated_at = ?, edited_at = ?
+			  WHERE id = ? AND deleted_at IS NULL`,
+			destListID, int(last.Int64)+1, now, now, itemID)
+		return err
+	})
 }
 
 // SetLinkStatus is used by the extractor and the link-health job.

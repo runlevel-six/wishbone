@@ -34,6 +34,8 @@ Recipes for a specific goal, assuming you already know roughly what you want.
 
 - [Add items from your phone](how-to/add-from-your-phone.md) — install it, and
   wire up the share sheet on Android and iPhone
+- [Sort a list and move items between lists](how-to/organize-a-list.md) — read a
+  list by price, date or category, and shift an item to another list of yours
 - [Run Wishbone locally](how-to/run-locally.md)
 - [Deploy to Kubernetes](how-to/deploy.md)
 - [Invite people and manage accounts](how-to/invite-people.md)

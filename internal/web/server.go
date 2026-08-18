@@ -141,6 +141,7 @@ func (s *Server) routes() {
 		r.Post("/items/{itemID}", s.handleUpdateItem)
 		r.Post("/items/{itemID}/delete", s.handleDeleteItem)
 		r.Post("/items/{itemID}/move", s.handleMoveItem)
+		r.Post("/items/{itemID}/move-to-list", s.handleMoveItemToList)
 
 		r.Post("/items/{itemID}/claims", s.handleCreateClaim)
 		r.Post("/claims/{claimID}/release", s.handleReleaseClaim)

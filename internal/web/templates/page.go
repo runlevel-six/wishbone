@@ -74,6 +74,40 @@ type ListPageData struct {
 	Categories  []CategoryOption
 	CanEdit     bool
 	DuplicateOf []DuplicateWarning
+	// MoveTargets are the owner's other lists, offered as destinations for an
+	// item. Empty for a viewer, and empty for an owner with nowhere else to put
+	// anything, in which case the control is left out entirely.
+	MoveTargets []MoveTarget
+}
+
+// MoveTarget is one list an item can be moved to. Only ever the owner's own
+// lists: an item cannot be pushed onto somebody else's.
+type MoveTarget struct {
+	ID   string
+	Name string
+}
+
+// OwnerCardOptions is the page context an owner's item card needs beyond the
+// item itself.
+//
+// It is a small purpose-built struct rather than ListPageData for the same
+// reason OwnerItemView has no claim fields (plan §3.2): nothing handed to an
+// owner-facing card should have claim-bearing data hanging off it, and
+// ListPageData reaches the viewer item slice through Page.
+type OwnerCardOptions struct {
+	MoveTargets []MoveTarget
+	// CanReorder is false while a sort is active. The arrows move an item within
+	// the stored order, which is not the order on screen, so they are left out
+	// rather than made to lie.
+	CanReorder bool
+	// Sort rides along so the move form comes back to the view it was used from.
+	Sort model.ItemSort
+}
+
+// SortOption is one entry in the sort control.
+type SortOption struct {
+	Value model.ItemSort
+	Label string
 }
 
 type CategoryOption struct {

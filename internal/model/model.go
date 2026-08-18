@@ -5,6 +5,7 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,48 @@ const (
 	LinkSuspect = "suspect"
 	LinkDead    = "dead"
 )
+
+// ItemSort is the order a list is read in.
+//
+// Unlike everything else in this file it is not a stored column: a sort is a
+// request-scoped view option, carried in the query string. It is named here
+// because three layers need the same vocabulary — the store turns it into an
+// ORDER BY, the web layer parses it out of a URL, and the templates label it.
+//
+// Every key a sort can use is owner-authored: a price, a date the owner added
+// something, a category they chose. None of them is claim-derived, which is
+// what makes sorting safe to offer on an owner's own list (plan §3.2).
+type ItemSort string
+
+const (
+	// SortManual is the owner's own order, the default everywhere.
+	SortManual    ItemSort = "manual"
+	SortPriceAsc  ItemSort = "price-asc"
+	SortPriceDesc ItemSort = "price-desc"
+	SortNewest    ItemSort = "added-new"
+	SortOldest    ItemSort = "added-old"
+	SortCategory  ItemSort = "category"
+)
+
+// ParseItemSort accepts one of the known orders and answers SortManual for
+// everything else, so a hand-edited or stale URL degrades to the default rather
+// than failing.
+func ParseItemSort(s string) ItemSort {
+	switch ItemSort(strings.TrimSpace(s)) {
+	case SortPriceAsc:
+		return SortPriceAsc
+	case SortPriceDesc:
+		return SortPriceDesc
+	case SortNewest:
+		return SortNewest
+	case SortOldest:
+		return SortOldest
+	case SortCategory:
+		return SortCategory
+	default:
+		return SortManual
+	}
+}
 
 // NewID returns a UUIDv7 string: time-sortable, no sequence coordination.
 func NewID() string {

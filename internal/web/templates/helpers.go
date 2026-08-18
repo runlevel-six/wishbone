@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"wishbone/internal/model"
 )
 
 // csrfHeader renders the hx-headers attribute configured once on <body>, so
@@ -163,6 +165,33 @@ func linkStatusNote(status string) string {
 		return "This link did not load last time it was checked."
 	default:
 		return ""
+	}
+}
+
+// sortOptions is the whole sort vocabulary, in the order it is offered. The
+// labels describe what the reader gets rather than which column moves.
+func sortOptions() []SortOption {
+	return []SortOption{
+		{model.SortManual, "List order"},
+		{model.SortPriceAsc, "Price: low to high"},
+		{model.SortPriceDesc, "Price: high to low"},
+		{model.SortNewest, "Recently added"},
+		{model.SortOldest, "Added longest ago"},
+		{model.SortCategory, "Category"},
+	}
+}
+
+// reorderable reports whether the up and down arrows mean anything in this
+// order. They move an item within the owner's stored order, so under any other
+// sort they would shuffle something the reader cannot see.
+func reorderable(sort model.ItemSort) bool { return sort == model.SortManual }
+
+// ownerCardOptions narrows the page model down to what an owner's card may know.
+func ownerCardOptions(d ListPageData) OwnerCardOptions {
+	return OwnerCardOptions{
+		MoveTargets: d.MoveTargets,
+		CanReorder:  reorderable(d.Page.Sort),
+		Sort:        d.Page.Sort,
 	}
 }
 

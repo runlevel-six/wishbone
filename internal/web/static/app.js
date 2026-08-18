@@ -40,6 +40,15 @@
 		if (window.confirm(msg)) { ev.detail.issueRequest(); }
 	});
 
+	// Submit a select's form as soon as it changes, so choosing a sort order is
+	// one action rather than two. The button stays in the markup and keeps
+	// working: this only removes a step for people who have JavaScript.
+	document.addEventListener("change", function (ev) {
+		if (!ev.target.matches("select[data-autosubmit]")) { return; }
+		var form = ev.target.form;
+		if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
+	});
+
 	// Select the invite link on focus so it is easy to copy.
 	document.addEventListener("focusin", function (ev) {
 		if (ev.target.matches("input[data-select-on-focus]")) { ev.target.select(); }

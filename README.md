@@ -11,6 +11,8 @@ other presents. Everyone has an account; nothing is public.
 - Lists that are private, shared with everyone, or shared with named people.
 - Items with quantity, notes, pictures, prices and per-category details.
 - Claiming, partial claiming, releasing, and marking things bought.
+- Read any list by price, when things were added, or category — and move an item
+  from one of your lists to another, claims and all.
 - **Owner-blindness**: a list owner learns nothing about claims on their own
   items — not hidden in the interface, absent from the data the page is built
   from.
@@ -38,6 +40,7 @@ Full documentation is in [`docs/`](docs/README.md), organised as
   by using it
 - **How-to guides** — [run locally](docs/how-to/run-locally.md),
   [deploy](docs/how-to/deploy.md), [invite people](docs/how-to/invite-people.md),
+  [sort and move things](docs/how-to/organize-a-list.md),
   [back up](docs/how-to/back-up-and-restore.md),
   [enable link lookup](docs/how-to/enable-link-lookup.md),
   [work on the code](docs/how-to/develop.md)

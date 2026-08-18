@@ -493,6 +493,47 @@ func (s *Server) handleMoveItem(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/lists/"+l.ID)
 }
 
+// handleMoveItemToList moves an item to another list the same person owns.
+//
+// The response does not vary with claim state and neither does the flash: a
+// message that only appeared for claimed items would be a claim indicator
+// (plan §3.2). It does vary with the destination's visibility, which is the
+// owner's own setting and theirs to be told about — moving something onto a
+// private list takes it away from everyone, and that is worth saying out loud.
+//
+// The redirect goes back to the list the item came from: whoever is tidying up
+// is usually part way through doing it.
+func (s *Server) handleMoveItemToList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	it, src, ok := s.ownedItem(w, r)
+	if !ok {
+		return
+	}
+	u := userFrom(ctx)
+	sort := model.ParseItemSort(r.PostFormValue("sort"))
+
+	dest, err := s.st.ListByID(ctx, strings.TrimSpace(r.PostFormValue("list_id")))
+	if err != nil || dest.OwnerID != u.ID {
+		s.renderNotFound(w, r)
+		return
+	}
+	if dest.ID == src.ID {
+		s.redirect(w, r, listPath(src.ID, sort))
+		return
+	}
+	if err := s.st.MoveItemToList(ctx, it.ID, dest.ID); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+
+	msg := "Moved to " + dest.Name + "."
+	if dest.Visibility == model.VisibilityPrivate {
+		msg += " That list is private, so nobody else can see the item now."
+	}
+	s.flash(w, templates.FlashOK, msg)
+	s.redirect(w, r, listPath(src.ID, sort))
+}
+
 // handleCategoryFields serves the dynamic field block when the category
 // selector changes.
 func (s *Server) handleCategoryFields(w http.ResponseWriter, r *http.Request) {
