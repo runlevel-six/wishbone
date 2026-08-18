@@ -65,6 +65,19 @@ func TestMigrateUpgradesAPopulatedDatabase(t *testing.T) {
 		t.Errorf("claims_seen_at = %q for an existing row, want NULL", *seen)
 	}
 
+	// 0003 is the other shape of ALTER: NOT NULL with a default, which SQLite
+	// backfills into every existing row. An account that predates themes is on
+	// the brand green rather than on an empty string nothing in the stylesheet
+	// matches.
+	var theme string
+	if err := sqldb.QueryRowContext(ctx,
+		`SELECT theme FROM users WHERE id = 'u1'`).Scan(&theme); err != nil {
+		t.Fatalf("select the theme column: %v", err)
+	}
+	if theme != "forest" {
+		t.Errorf("theme = %q for an existing row, want the default", theme)
+	}
+
 	// The row survived, and STRICT is still in force on the altered table.
 	var name string
 	if err := sqldb.QueryRowContext(ctx,

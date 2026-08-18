@@ -22,3 +22,7 @@ coverage.out
 # hosting environment in detail and is not part of the published project.
 # Remove this line if you decide otherwise.
 /docs/plan.md
+
+# The palette concept sheet. Design working material, handed over to pick the
+# themes from; the values that mattered are in app.css now.
+/themes.png

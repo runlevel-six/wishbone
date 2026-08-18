@@ -209,6 +209,23 @@ func (s *Server) handleAccountProfile(w http.ResponseWriter, r *http.Request) {
 	s.redirect(w, r, "/account")
 }
 
+// handleAccountTheme records the palette this person wants.
+//
+// An unknown value is not an error worth a message: ParseTheme clamps it to the
+// default, which is what the page will then show, and the only way to send one is
+// to hand-craft the request. There is nothing to tell an honest form.
+func (s *Server) handleAccountTheme(w http.ResponseWriter, r *http.Request) {
+	u := userFrom(r.Context())
+	theme := model.ParseTheme(r.PostFormValue("theme"))
+	if err := s.st.SetTheme(r.Context(), u.ID, theme); err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	// No flash. The next page is the answer — it arrives in the new color, and a
+	// message saying so on top of that is noise.
+	s.redirect(w, r, "/account")
+}
+
 func (s *Server) handleAccountPassword(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	u := userFrom(ctx)

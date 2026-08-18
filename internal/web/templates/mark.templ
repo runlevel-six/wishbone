@@ -1,0 +1,39 @@
+package templates
+
+// BrandMark is the bow, drawn inline so it can wear the reader's theme.
+//
+// It used to be an <img> pointing at /static/icon.svg, which cannot be
+// recolored from CSS: an image's own pixels are not the page's to restyle. The
+// same drawing inline takes --mark-plate and --mark-bow like anything else, so a
+// person on the cranberry palette gets a cranberry bow rather than a green one
+// sitting next to cranberry chrome.
+//
+// The favicon, the app icons and the manifest's theme_color stay green in every
+// theme. Those are fetched without a session — the browser asks for a favicon
+// long before it knows who is looking — so they cannot be per person, and a
+// baked PNG could not follow a preference anyway.
+//
+// The path data is the same drawing as static/icon.svg and tools/icongen, which
+// is now three copies of four curves. A test compares this component's paths
+// against the static file byte for byte, so the copies cannot drift apart
+// quietly; change one and change the others.
+//
+// Decorative in both places it appears: the product name is rendered as text
+// beside it in the header and under it on the way in, so a screen reader
+// announcing the mark as well would only repeat the word.
+templ BrandMark(class string, size int) {
+	<svg class={ class } width={ itoa(size) } height={ itoa(size) } viewBox="0 0 32 32"
+		xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+		<rect class="mark-plate" width="32" height="32" rx="7"></rect>
+		<g class="mark-bow" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+			<g>
+				<path d="M15.8 12.2 C12.2 7.0 8.2 4.6 6.8 8.0 C5.8 10.8 10.8 12.2 15.4 12.6"></path>
+				<path d="M16.3 12.9 C13.8 14.6 10.6 20.4 10.1 25.4"></path>
+			</g>
+			<g transform="matrix(-1 0 0 1 32 0)">
+				<path d="M15.8 12.2 C12.2 7.0 8.2 4.6 6.8 8.0 C5.8 10.8 10.8 12.2 15.4 12.6"></path>
+				<path d="M16.3 12.9 C13.8 14.6 10.6 20.4 10.1 25.4"></path>
+			</g>
+		</g>
+	</svg>
+}

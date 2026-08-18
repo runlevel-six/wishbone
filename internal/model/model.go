@@ -40,6 +40,38 @@ const (
 	LinkDead    = "dead"
 )
 
+// Theme is the palette an account wears. It is stored on the user row: a
+// preference belongs to the person, not to the browser they happen to be on.
+//
+// The values are a closed set clamped by ParseTheme, so an unknown one — an
+// account written by an older build, a hand-edited row, a form field somebody
+// typed into — renders as the default rather than as an unstyled page.
+type Theme string
+
+const (
+	// ThemeForest is the brand green, and the default for every account and for
+	// anyone not signed in yet.
+	ThemeForest    Theme = "forest"
+	ThemeCranberry Theme = "cranberry"
+	ThemeNavy      Theme = "navy"
+)
+
+// Themes is every palette on offer, in the order the picker shows them. Adding
+// one means adding it here and adding its two blocks to app.css; the stylesheet
+// test checks the two stay in step.
+var Themes = []Theme{ThemeForest, ThemeCranberry, ThemeNavy}
+
+// ParseTheme accepts a known palette and answers ThemeForest for anything else.
+func ParseTheme(s string) Theme {
+	candidate := Theme(strings.TrimSpace(s))
+	for _, t := range Themes {
+		if t == candidate {
+			return t
+		}
+	}
+	return ThemeForest
+}
+
 // ItemSort is the order a list is read in.
 //
 // Unlike everything else in this file it is not a stored column: a sort is a
@@ -109,6 +141,7 @@ type User struct {
 	PasswordHash string
 	IsAdmin      bool
 	MustReset    bool
+	Theme        Theme
 	CreatedAt    string
 	LegacyID     *string
 }

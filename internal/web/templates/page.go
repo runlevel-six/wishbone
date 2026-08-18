@@ -38,6 +38,22 @@ type Page struct {
 	// Asset is the build version, appended to every /static/ URL so a release
 	// retires the previous release's cached files. See asset().
 	Asset string
+	// Theme is the palette this reader chose, rendered onto <html> so one
+	// attribute switches every color in the stylesheet. Anonymous pages carry
+	// the default: a theme belongs to an account.
+	Theme model.Theme
+}
+
+// ThemeOption is one palette in the appearance picker.
+type ThemeOption struct {
+	Value model.Theme
+	Label string
+	// Note is the one-line character sketch from the concept sheet. It is what
+	// makes the list choosable without a preview of the whole app.
+	Note string
+	// Swatch is the CSS class that paints this palette's color, so the picker
+	// shows the colors rather than describing them.
+	Swatch string
 }
 
 func (p Page) IsAdmin() bool { return p.User != nil && p.User.IsAdmin }

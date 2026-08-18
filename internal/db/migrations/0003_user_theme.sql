@@ -1,0 +1,14 @@
+-- Each person picks the colour the app wears. The concept work drew several
+-- palettes around the same warm cream; the green one is the default because it
+-- is the brand, and the rest are preference.
+--
+-- Stored on the account rather than in a cookie so it follows a person between
+-- their phone and their laptop, and so an installed PWA does not lose it when a
+-- cookie is cleared.
+--
+-- NOT NULL with a default, so every existing account is already on the green one
+-- and no code has to treat "unset" as a third state. The permitted values are a
+-- closed set in Go (model.ParseTheme, which clamps anything unknown back to the
+-- default) rather than a CHECK constraint, because SQLite cannot add one to an
+-- existing table and adding a palette should not need a table rebuild.
+ALTER TABLE users ADD COLUMN theme TEXT NOT NULL DEFAULT 'forest';

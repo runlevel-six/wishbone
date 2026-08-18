@@ -1,6 +1,14 @@
 /* Wishbone — one hand-written stylesheet, no framework, no build step. */
 
 :root {
+	/* The palettes, one accent each, all of them against the same warm cream.
+	   These are the concept sheet's values, kept here as the single source: the
+	   theme blocks below build from them, the swatches in the theme picker paint
+	   themselves with them, and nothing else has a reason to know a hex. */
+	--swatch-forest: #1f4d3a;
+	--swatch-cranberry: #b83a3a;
+	--swatch-navy: #24324b;
+
 	/* The logo's two colours: green #1F4D3A, cream #F7EFE4. Everything else is
 	   derived from them, which is why the greys lean warm — a neutral grey next
 	   to this cream reads as dirty. */
@@ -9,8 +17,14 @@
 	--ink: #1c2420;
 	--muted: #6b6b60;
 	--line: #e3d8c8;
-	--accent: #1f4d3a;
+	--accent: var(--swatch-forest);
 	--accent-ink: #f7efe4;
+	/* The mark's own two colors, separate from --accent for the reason the dark
+	   block gives below: a plate is a fill and a link is text, and the value that
+	   suits one is wrong for the other. Keeping them apart is also what lets the
+	   bow stay a bow in dark mode instead of inverting into a bright tile. */
+	--mark-plate: var(--swatch-forest);
+	--mark-bow: #f7efe4;
 	/* The wordmark's gold dot, used sparingly: unread counts and warnings. */
 	--gold: #c9a227;
 	--link: #1f4d3a;
@@ -46,6 +60,11 @@
 		--line: #2a3831;
 		--accent: #6fbf9b;
 		--accent-ink: #10241c;
+		/* The plate lightens just enough to separate from the topbar it sits on,
+		   and the bow stays cream: the mark reads as itself in both modes rather
+		   than flipping to a pale tile with a dark bow. */
+		--mark-plate: #2b7357;
+		--mark-bow: #f7efe4;
 		--gold: #e0bb52;
 		--link: #6fbf9b;
 		--link-visited: #85a596;
@@ -62,6 +81,78 @@
 		--info-bg: #1c2631;
 		--info-line: #4c6a94;
 		--shadow: none;
+	}
+}
+
+/* Themes -------------------------------------------------------------
+ *
+ * A theme is the same app in another accent. The cream ground, the warm greys
+ * and every semantic color stay exactly where they are: green still means
+ * saved, red still means wrong, and a palette that recolored those would be
+ * changing meaning rather than taste. What changes is the accent, the two link
+ * colors, the ink's slight tint, the mark, and — in dark mode — the near-black
+ * ground, which leans into the theme's own hue so the mark sits in the page
+ * instead of on it.
+ *
+ * Two rules keep this maintainable, both enforced by the stylesheet test in
+ * internal/web:
+ *
+ * 1. Every theme defines the same variables as every other theme, per mode. A
+ *    palette that sets one fewer inherits green in that one place, which is the
+ *    kind of thing nobody notices until it is on somebody's phone.
+ * 2. Whatever a theme sets in light it sets again in dark. `[data-theme=…]` and
+ *    `:root` carry identical specificity, so in dark mode the light block still
+ *    applies to anything the dark block leaves out, and the leftover would be a
+ *    light-mode color on a dark ground.
+ *
+ * Link colors are text, so they are checked against the ground rather than
+ * copied from the accent: cranberry's fill clears AA on cream by a whisker,
+ * and as link text it gets a deeper value with room to spare.
+ */
+
+[data-theme="cranberry"] {
+	--ink: #241c1c;
+	--accent: var(--swatch-cranberry);
+	--link: #a83232;
+	--link-visited: #8f5a5a;
+	--mark-plate: var(--swatch-cranberry);
+}
+
+[data-theme="navy"] {
+	--ink: #1b2130;
+	--accent: var(--swatch-navy);
+	--link: #2c3f60;
+	--link-visited: #5a6b86;
+	--mark-plate: var(--swatch-navy);
+}
+
+@media (prefers-color-scheme: dark) {
+	[data-theme="cranberry"] {
+		--bg: #1c1213;
+		--surface: #26191a;
+		--ink: #ece0dc;
+		--muted: #a99b9b;
+		--line: #3b2727;
+		--accent: #f0938f;
+		--accent-ink: #2a1112;
+		--mark-plate: #b04544;
+		--mark-bow: #f7efe4;
+		--link: #f0938f;
+		--link-visited: #c99a97;
+	}
+
+	[data-theme="navy"] {
+		--bg: #101722;
+		--surface: #18202e;
+		--ink: #e3e7ee;
+		--muted: #98a1b0;
+		--line: #2a3448;
+		--accent: #8fb6ea;
+		--accent-ink: #101a28;
+		--mark-plate: #35507a;
+		--mark-bow: #f7efe4;
+		--link: #8fb6ea;
+		--link-visited: #9aa8bf;
 	}
 }
 
@@ -132,14 +223,16 @@ main {
 	letter-spacing: -.01em;
 }
 
-/* The mark carries its own green tile, so it needs no treatment to sit on
-   either theme's header — only the corner radius, which the SVG draws at its own
-   scale and which has to be re-stated here for the browser's box. */
+/* The mark is drawn inline (see mark.templ), which is what lets it wear the
+   theme: an <img> is opaque to CSS. It brings its own plate and its own corner
+   radius, drawn at the SVG's scale, so there is nothing to re-state here. */
 .brand-mark {
 	display: block;
-	border-radius: 6px;
 	flex: none;
 }
+
+.mark-plate { fill: var(--mark-plate); }
+.mark-bow { stroke: var(--mark-bow); }
 
 /* Sign-in and registration: the mark above the name, which is the only place in
    the app with room for it at a size where the bow is legible. */
@@ -149,8 +242,8 @@ main {
 	line-height: 0;
 }
 
-.brand-lockup img {
-	border-radius: 14px;
+.brand-lockup-mark {
+	display: inline-block;
 }
 
 .brand-title {
@@ -359,6 +452,24 @@ input.qty { width: 4.5rem; }
 .check { display: flex; align-items: center; gap: .45rem; font-weight: 400; }
 .check input { width: auto; margin: 0; }
 
+/* The theme picker. The swatches paint themselves from the palette constants at
+   the top of this file, not from --accent: every option has to show its own
+   color, including the ones that are not currently switched on. */
+.themes { display: flex; flex-direction: column; gap: .5rem; }
+.theme-choice { gap: .55rem; }
+
+.swatch {
+	width: 1.1rem;
+	height: 1.1rem;
+	border-radius: 5px;
+	border: 1px solid var(--line);
+	flex: none;
+}
+
+.swatch-forest { background: var(--swatch-forest); }
+.swatch-cranberry { background: var(--swatch-cranberry); }
+.swatch-navy { background: var(--swatch-navy); }
+
 fieldset { border: 1px solid var(--line); border-radius: var(--radius); padding: .75rem; }
 legend { font-size: .85rem; color: var(--muted); padding: 0 .35rem; }
 .shares { display: flex; flex-direction: column; gap: .35rem; }
@@ -387,7 +498,11 @@ button.primary, .button.primary {
 }
 
 button.small, .button.small { padding: .25rem .55rem; font-size: .85rem; }
-button.danger, .button.danger { color: #a4402c; border-color: var(--error-line); }
+/* The one red the palettes do not touch — danger means danger in every theme —
+   but it goes through the variable rather than a literal, which is what makes it
+   lighten on a dark ground. As a literal it sat at 2.8:1 there, under half the
+   floor for text, the same way the field-error red once did. */
+button.danger, .button.danger { color: var(--error-ink); border-color: var(--error-line); }
 button.link, .button.link { background: none; border: none; color: var(--muted); text-decoration: underline; padding: .45rem .3rem; }
 
 .danger-zone { border-top: 1px solid var(--line); margin-top: 1rem; padding-top: 1rem; }

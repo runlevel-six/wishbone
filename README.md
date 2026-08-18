@@ -16,6 +16,7 @@ other presents. Everyone has an account; nothing is public.
 - **Owner-blindness**: a list owner learns nothing about claims on their own
   items — not hidden in the interface, absent from the data the page is built
   from.
+- Each person picks the color the app wears — three palettes, light and dark.
 - Optional link lookup: paste a product URL and Wishbone reads the page itself,
   through a fetcher hardened against SSRF, and never hotlinks the picture.
 
@@ -41,6 +42,7 @@ Full documentation is in [`docs/`](docs/README.md), organised as
 - **How-to guides** — [run locally](docs/how-to/run-locally.md),
   [deploy](docs/how-to/deploy.md), [invite people](docs/how-to/invite-people.md),
   [sort and move things](docs/how-to/organize-a-list.md),
+  [choose a color](docs/how-to/choose-your-color.md),
   [back up](docs/how-to/back-up-and-restore.md),
   [enable link lookup](docs/how-to/enable-link-lookup.md),
   [work on the code](docs/how-to/develop.md)

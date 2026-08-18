@@ -23,6 +23,12 @@ func (s *Server) page(w http.ResponseWriter, r *http.Request, title string) temp
 		Flashes: s.takeFlashes(w, r),
 		Path:    r.URL.Path,
 		Asset:   s.cfg.Version,
+		// The default until we know whose page this is. Sign-in and registration
+		// stay on it, because a palette is a property of an account.
+		Theme: model.ThemeForest,
+	}
+	if p.User != nil {
+		p.Theme = p.User.Theme
 	}
 	// The unread count on the Claimed link (plan §12). It lives in the chrome
 	// because the whole point is to be seen from wherever the person happens to

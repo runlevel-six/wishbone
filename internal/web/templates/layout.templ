@@ -2,7 +2,7 @@ package templates
 
 templ Layout(p Page) {
 	<!DOCTYPE html>
-	<html lang="en" data-asset-version={ p.Asset }>
+	<html lang="en" data-theme={ string(p.Theme) } data-asset-version={ p.Asset }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -28,7 +28,7 @@ templ Layout(p Page) {
 			<link rel="icon" type="image/png" sizes="192x192" href={ asset("/static/icon-192.png", p.Asset) }/>
 			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
 			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
-			<meta name="theme-color" content="#1F4D3A"/>
+			<meta name="theme-color" content={ themeColor(p.Theme) }/>
 			// iOS ignores the manifest for home-screen installs and reads these
 			// instead. It also has no Web Share Target — see the phone how-to.
 			<link rel="apple-touch-icon" href={ asset("/static/apple-touch-icon.png", p.Asset) }/>
@@ -44,7 +44,7 @@ templ Layout(p Page) {
 						<a class="brand" href="/">
 						// Decorative: the name is right beside it, so a screen
 						// reader announcing the mark too would only repeat itself.
-						<img class="brand-mark" src={ asset("/static/icon.svg", p.Asset) } alt="" width="26" height="26"/>
+						@BrandMark("brand-mark", 26)
 						{ ProductName }
 					</a>
 					<nav>
@@ -78,9 +78,13 @@ templ Layout(p Page) {
 }
 
 // Bare is the chrome-free layout used by the sign-in and registration pages.
+//
+// Nobody is signed in here, so there is no preference to read: it always wears
+// the default green. A theme is a property of an account, and the page that
+// exists to find out whose account this is cannot know one yet.
 templ Bare(p Page) {
 	<!DOCTYPE html>
-	<html lang="en" data-asset-version={ p.Asset }>
+	<html lang="en" data-theme={ string(p.Theme) } data-asset-version={ p.Asset }>
 		<head>
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -100,7 +104,7 @@ templ Bare(p Page) {
 			<link rel="icon" type="image/png" sizes="192x192" href={ asset("/static/icon-192.png", p.Asset) }/>
 			<link rel="icon" href={ asset("/static/icon.svg", p.Asset) } type="image/svg+xml"/>
 			<link rel="manifest" href={ asset("/static/manifest.webmanifest", p.Asset) }/>
-			<meta name="theme-color" content="#1F4D3A"/>
+			<meta name="theme-color" content={ themeColor(p.Theme) }/>
 			// iOS ignores the manifest for home-screen installs and reads these
 			// instead. It also has no Web Share Target — see the phone how-to.
 			<link rel="apple-touch-icon" href={ asset("/static/apple-touch-icon.png", p.Asset) }/>
@@ -111,7 +115,7 @@ templ Bare(p Page) {
 		<body class="centered">
 			<main class="card narrow">
 				<p class="brand-lockup">
-					<img src={ asset("/static/icon.svg", p.Asset) } alt="" width="64" height="64"/>
+					@BrandMark("brand-lockup-mark", 64)
 				</p>
 				<h1 class="brand-title">{ ProductName }</h1>
 				for _, f := range p.Flashes {

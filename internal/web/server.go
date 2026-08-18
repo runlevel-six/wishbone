@@ -122,6 +122,7 @@ func (s *Server) routes() {
 		r.Get("/account", s.handleAccount)
 		r.Post("/account/profile", s.handleAccountProfile)
 		r.Post("/account/password", s.handleAccountPassword)
+		r.Post("/account/theme", s.handleAccountTheme)
 
 		r.Get("/claims", s.handleMyClaims)
 		r.Get("/share-target", s.handleShareTarget)

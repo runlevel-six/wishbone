@@ -22,6 +22,7 @@ Conventions:
 | `password_hash` | TEXT | argon2id encoded string |
 | `is_admin` | INTEGER | |
 | `must_reset` | INTEGER | Confines the user to `/account` until cleared |
+| `theme` | TEXT | Which palette this person's pages wear: `forest` (default), `cranberry`, `navy`. NOT NULL with a default, so accounts predating it are on the brand green. The permitted set lives in Go (`model.ParseTheme`), which clamps anything else back to the default on the way in *and* on the way out — SQLite cannot add a CHECK to an existing table, and adding a palette should not need a table rebuild |
 | `created_at` | TEXT | |
 | `claims_seen_at` | TEXT NULL | When this person last opened their own claims page; drives the unread count on **Claimed**. NULL means never, and the count then measures from each claim's own creation, so nobody is handed a badge for history. Read and written only by that person's own request — never shown to a list owner |
 | `legacy_id` | TEXT NULL | For a future importer; nullable forever |

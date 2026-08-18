@@ -21,19 +21,27 @@ func (s *Store) CreateSession(ctx context.Context, sess *model.Session) error {
 func (s *Store) SessionUser(ctx context.Context, tokenHash, now string) (*model.User, *model.Session, error) {
 	var sess model.Session
 	var u model.User
+	// This column list is written out rather than built from userCols because of
+	// the join, which means it is the one place a new user column has to be added
+	// by hand. It is also the user object every authenticated request works from,
+	// so anything missing here is missing app-wide.
+	var theme string
 	err := s.db.QueryRowContext(ctx,
 		`SELECT s.token_hash, s.user_id, s.created_at, s.expires_at, s.user_agent,
-		        u.id, u.username, u.display_name, u.password_hash, u.is_admin, u.must_reset, u.created_at, u.legacy_id
+		        u.id, u.username, u.display_name, u.password_hash, u.is_admin, u.must_reset,
+		        u.theme, u.created_at, u.legacy_id
 		   FROM sessions s JOIN users u ON u.id = s.user_id
 		  WHERE s.token_hash = ? AND s.expires_at > ?`, tokenHash, now).
 		Scan(&sess.TokenHash, &sess.UserID, &sess.CreatedAt, &sess.ExpiresAt, &sess.UserAgent,
-			&u.ID, &u.Username, &u.DisplayName, &u.PasswordHash, &u.IsAdmin, &u.MustReset, &u.CreatedAt, &u.LegacyID)
+			&u.ID, &u.Username, &u.DisplayName, &u.PasswordHash, &u.IsAdmin, &u.MustReset,
+			&theme, &u.CreatedAt, &u.LegacyID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil, model.ErrNotFound
 	}
 	if err != nil {
 		return nil, nil, err
 	}
+	u.Theme = model.ParseTheme(theme)
 	return &u, &sess, nil
 }
 

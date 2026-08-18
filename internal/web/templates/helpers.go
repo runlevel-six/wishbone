@@ -168,6 +168,34 @@ func linkStatusNote(status string) string {
 	}
 }
 
+// themeOptions is every palette on offer, in the order the picker shows them.
+// The notes are the concept sheet's own one-liners.
+func themeOptions() []ThemeOption {
+	return []ThemeOption{
+		{model.ThemeForest, "Forest green", "The original. Most classic.", "swatch-forest"},
+		{model.ThemeCranberry, "Cranberry", "Most gift-oriented.", "swatch-cranberry"},
+		{model.ThemeNavy, "Charcoal navy", "Most trustworthy.", "swatch-navy"},
+	}
+}
+
+// themeColor is the <meta name="theme-color"> value: what a phone paints its own
+// browser chrome with. It is the palette's accent at full strength, matching the
+// swatch in the picker and the plate behind the bow.
+//
+// Hard-coded here because a meta tag cannot read a CSS variable. The stylesheet
+// test checks each value against the matching --swatch-* in app.css, so the two
+// cannot drift.
+func themeColor(t model.Theme) string {
+	switch t {
+	case model.ThemeCranberry:
+		return "#b83a3a"
+	case model.ThemeNavy:
+		return "#24324b"
+	default:
+		return "#1f4d3a"
+	}
+}
+
 // sortOptions is the whole sort vocabulary, in the order it is offered. The
 // labels describe what the reader gets rather than which column moves.
 func sortOptions() []SortOption {

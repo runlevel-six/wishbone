@@ -9,18 +9,23 @@ import (
 	"wishbone/internal/model"
 )
 
-const userCols = `id, username, display_name, password_hash, is_admin, must_reset, created_at, legacy_id`
+const userCols = `id, username, display_name, password_hash, is_admin, must_reset, theme, created_at, legacy_id`
 
 func scanUser(sc interface{ Scan(...any) error }) (*model.User, error) {
 	var u model.User
+	var theme string
 	err := sc.Scan(&u.ID, &u.Username, &u.DisplayName, &u.PasswordHash,
-		&u.IsAdmin, &u.MustReset, &u.CreatedAt, &u.LegacyID)
+		&u.IsAdmin, &u.MustReset, &theme, &u.CreatedAt, &u.LegacyID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, model.ErrNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
+	// Clamped on the way out as well as on the way in: a row holding a palette
+	// this build has never heard of renders as the default rather than as a page
+	// with no colors at all.
+	u.Theme = model.ParseTheme(theme)
 	return &u, nil
 }
 
@@ -31,10 +36,13 @@ func (s *Store) CreateUser(ctx context.Context, u *model.User) error {
 	if u.CreatedAt == "" {
 		u.CreatedAt = model.TimeString(model.Now())
 	}
+	if u.Theme == "" {
+		u.Theme = model.ThemeForest
+	}
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?)`,
+		`INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?)`,
 		u.ID, u.Username, u.DisplayName, u.PasswordHash,
-		boolInt(u.IsAdmin), boolInt(u.MustReset), u.CreatedAt, u.LegacyID)
+		boolInt(u.IsAdmin), boolInt(u.MustReset), string(u.Theme), u.CreatedAt, u.LegacyID)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
 		return model.ErrConflict
 	}
@@ -88,6 +96,14 @@ func (s *Store) SetPassword(ctx context.Context, userID, hash string) error {
 func (s *Store) UpdateProfile(ctx context.Context, userID, displayName string) error {
 	_, err := s.db.ExecContext(ctx,
 		`UPDATE users SET display_name = ? WHERE id = ?`, displayName, userID)
+	return err
+}
+
+// SetTheme records which palette this person wants. The value is clamped here
+// too, so nothing but a known palette is ever written.
+func (s *Store) SetTheme(ctx context.Context, userID string, theme model.Theme) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE users SET theme = ? WHERE id = ?`, string(model.ParseTheme(string(theme))), userID)
 	return err
 }
 

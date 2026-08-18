@@ -80,6 +80,7 @@ templ Account(p Page, mustReset bool, errMsg, okMsg string) {
 				<button type="submit">Save</button>
 			</form>
 		</section>
+		@appearance(p)
 		<section class="card">
 			<h2>Change password</h2>
 			<form method="post" action="/account/password" class="stack">
@@ -103,4 +104,35 @@ templ Account(p Page, mustReset bool, errMsg, okMsg string) {
 			</form>
 		</section>
 	}
+}
+
+// appearance is the theme picker.
+//
+// Radio buttons with a swatch beside each one, rather than a dropdown: the whole
+// question is what color the app should be, and a list of color names with no
+// colors next to them is a worse way to ask it. The choice is saved against the
+// account, so it follows the person to their phone.
+templ appearance(p Page) {
+	<section class="card">
+		<h2>Color</h2>
+		<form method="post" action="/account/theme" class="stack">
+			<input type="hidden" name="csrf_token" value={ p.CSRF }/>
+			<fieldset class="themes">
+				<legend>Which color Wishbone wears for you</legend>
+				for _, t := range themeOptions() {
+					<label class="check theme-choice">
+						<input type="radio" name="theme" value={ string(t.Value) } checked?={ p.Theme == t.Value }/>
+						<span class={ "swatch", t.Swatch }></span>
+						<span>{ t.Label }</span>
+						<span class="muted small">{ t.Note }</span>
+					</label>
+				}
+			</fieldset>
+			<button type="submit">Save color</button>
+			<p class="hint">
+				Only you see this. The app icon on your home screen stays green — a
+				phone asks for that before it knows who is looking.
+			</p>
+		</form>
+	</section>
 }
