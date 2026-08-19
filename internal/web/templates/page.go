@@ -224,6 +224,21 @@ type FoundDetails struct {
 	Canonical string
 }
 
+// HelpData is everything the help page is allowed to know.
+//
+// Two facts about this instance, and no data belonging to anybody. The page is
+// prose; these are here because prose that describes a box which is not on the
+// screen, or tells somebody to type a host they would have to guess, is worse
+// than no help at all.
+type HelpData struct {
+	// ShareTargetURL is this instance's own share-target address, spelled out so
+	// the iPhone shortcut can be built by copying rather than by guessing.
+	ShareTargetURL string
+	// FetchEnabled says whether link lookup exists here. With it off, the whole
+	// "start from a link" story describes a box that is not there.
+	FetchEnabled bool
+}
+
 // ShareListOption is one destination offered for a shared link.
 type ShareListOption struct {
 	ID   string

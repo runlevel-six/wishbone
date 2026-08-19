@@ -105,6 +105,11 @@ func (s *Server) routes() {
 		http.ServeFileFS(w, r, sub, "sw.js")
 	})
 
+	// Help is deliberately outside both groups: it is the same prose for
+	// everybody, it reads no data, and the person who most needs it may be the
+	// one who cannot get past the sign-in page. See handleHelp.
+	r.Get("/help", s.handleHelp)
+
 	r.Group(func(r chi.Router) {
 		r.Use(s.requireAnonymous)
 		r.Get("/login", s.handleLoginForm)

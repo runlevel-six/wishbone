@@ -523,6 +523,46 @@ button.link, .button.link { background: none; border: none; color: var(--muted);
 .flash-warn { background: var(--warn-bg); border-color: var(--warn-line); }
 .flash-error { background: var(--error-bg); border-color: var(--error-line); }
 
+/* Help ---------------------------------------------------------------
+ *
+ * The one page in the app that is prose rather than data, so it is the one place
+ * that needs prose measure and prose rhythm. Everything else here is a card of
+ * fields, where the defaults are right.
+ *
+ * scroll-margin-top is load bearing, not polish: every contextual "more about
+ * this" link in the app lands on a fragment, and without it the heading it
+ * landed on sits against the very top edge with its section reading as though it
+ * started mid-sentence. */
+
+.help p, .help li { max-width: 68ch; }
+.help h3 { margin-top: 1.25rem; font-size: .98rem; }
+.help ul, .help ol { margin: .5rem 0 .5rem 1.15rem; padding: 0; }
+.help li { margin-bottom: .4rem; }
+.help[id], .help h3[id] { scroll-margin-top: 1rem; }
+
+.help-toc ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: .35rem;
+	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.help-code { margin: .5rem 0 0; }
+
+/* Long, unbreakable and meant to be copied: this instance's own share-target
+   address. It wraps rather than widening the card on a phone. */
+.help code {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	font-size: .9em;
+	background: var(--bg);
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	padding: .1rem .3rem;
+	overflow-wrap: anywhere;
+}
+
 .table { width: 100%; border-collapse: collapse; font-size: .92rem; }
 .table th, .table td { text-align: left; padding: .4rem .5rem; border-bottom: 1px solid var(--line); }
 .table th { color: var(--muted); font-weight: 600; }

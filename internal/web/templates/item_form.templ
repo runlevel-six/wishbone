@@ -23,6 +23,7 @@ templ ItemForm(p Page, f ItemFormData) {
 				<p class="hint">
 					Wishbone fetches the page itself so the shop never sees who is looking. If it
 					cannot read the page, fill the form in by hand — that works just as well.
+					<a href="/help#link-lookup">What it can and cannot read</a>.
 				</p>
 			</section>
 		}
@@ -39,6 +40,7 @@ templ ItemFormBody(p Page, f ItemFormData) {
 			<div class="flash flash-warn">
 				Could not read that page ({ f.FetchError }). Fill in whatever you know — a
 				hand-typed item is not a second-class item here.
+				<a href="/help#could-not-read">What to check</a>.
 			</div>
 		}
 		if f.Blocked {
@@ -48,6 +50,7 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				a person with a browser. Your link is fine and is saved as it is; the details
 				are the part you have to fill in. Copying the name and price across from the
 				tab you already have open is the fastest way.
+				<a href="/help#shop-refused">More about this</a>.
 			</div>
 		}
 		if f.Suspect {
@@ -61,10 +64,12 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				if f.Found == nil {
 					Nothing was filled in automatically. Check the link, then enter the details
 					yourself if it is still the right product.
+					<a href="/help#looks-wrong">Why Wishbone doubts a page</a>.
 				} else {
 					<p>
 						Nothing was filled in automatically. Here is what that page did say, so
 						you can judge it rather than take Wishbone's word for it.
+						<a href="/help#looks-wrong">How to judge it</a>.
 					</p>
 					@foundSummary(*f.Found)
 					// The values travel back in these rather than being fetched
@@ -114,10 +119,17 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				That page loaded, but it did not publish any product details Wishbone could
 				read — some big shops deliberately hide them from anything that is not a
 				browser. Fill in what you know below; the link is saved either way.
+				<a href="/help#nothing-found">More about this</a>.
 			</div>
 		}
 		if believedLookup(f) && !f.NothingFound {
-			<div class="flash flash-ok">Filled in from the page. Change anything that looks off.</div>
+			// A lookup that filled some fields and left others empty is the most
+			// common outcome of all, and reads as a half-failure unless somebody
+			// says otherwise. So the cheerful flash says it too.
+			<div class="flash flash-ok">
+				Filled in from the page. Change anything that looks off, and fill in anything
+				left empty — <a href="/help#partly-filled">the page did not say</a>.
+			</div>
 		}
 		if len(otherErrors(f.Errors)) > 0 {
 			<div class="flash flash-error">

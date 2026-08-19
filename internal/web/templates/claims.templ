@@ -4,7 +4,10 @@ templ Claims(p Page, rows []ClaimedRow) {
 	@Layout(p) {
 		<h1>Things you have claimed</h1>
 		if len(rows) == 0 {
-			<p class="muted">You have not claimed anything yet.</p>
+			<p class="muted">
+				You have not claimed anything yet. Open somebody else's list and say you will
+				get something — <a href="/help#claiming">how claiming works</a>.
+			</p>
 		}
 		<ul class="items">
 			for _, r := range rows {

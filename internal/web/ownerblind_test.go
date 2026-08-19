@@ -18,14 +18,32 @@ import (
 // any claim-state affordance.
 func claimCanaries(h *harness) map[string]string {
 	c := map[string]string{
-		canaryNote:               "a claimer's private note",
 		"still needed":           "remaining-quantity counter",
 		"Fully claimed":          "fully-claimed marker",
 		"Mark bought":            "claim state control",
 		"Release":                "claim release control",
 		"I&rsquo;ll get this":    "claim button",
-		"/claims/":               "a claim-scoped URL",
 		"cannot see any of this": "the claim list footnote",
+	}
+	for k, v := range claimDataCanaries(h) {
+		c[k] = v
+	}
+	return c
+}
+
+// claimDataCanaries is the half of the list that is somebody's actual data
+// rather than the vocabulary of the interface: a note a claimer typed, and the
+// identifiers a claim is addressed by.
+//
+// The split exists for the help page, which is prose about how Wishbone works
+// and therefore names the claim controls on purpose — somebody looking for help
+// with the button in front of them has to be able to find it by its label. A
+// page built from no data cannot leak data, and these are the canaries that
+// still mean something there.
+func claimDataCanaries(h *harness) map[string]string {
+	c := map[string]string{
+		canaryNote: "a claimer's private note",
+		"/claims/": "a claim-scoped URL",
 	}
 	if h.claim != nil {
 		c[h.claim.ID] = "a claim ID"
@@ -56,9 +74,19 @@ func TestOwnerBlindnessAcrossAllRoutes(t *testing.T) {
 			var rec = h.request(rt.method, target, h.ownerSession, url.Values{})
 			body := rec.Body.String()
 
+			// The help page is the one route that describes the claim controls in
+			// words, because that is its job (see templates.Help). It is checked
+			// against the data canaries only, and separately: help_test.go proves
+			// it is the same page for every reader, and the byte-comparison test
+			// below proves it does not move when claims appear.
+			canaries := claimCanaries(h)
+			if rt.pattern == "/help" {
+				canaries = claimDataCanaries(h)
+			}
+
 			// Redirects and errors are fine; what matters is that no response
 			// body carries claim state.
-			for canary, what := range claimCanaries(h) {
+			for canary, what := range canaries {
 				if strings.Contains(body, canary) {
 					t.Errorf("owner-visible response for %s %s leaks %s (%q)",
 						rt.method, target, what, canary)
@@ -92,6 +120,9 @@ func TestOwnerResponsesUnchangedByClaims(t *testing.T) {
 		"/items/" + h.item.ID + "/edit",
 		"/claims",
 		"/admin",
+		// Prose, and it has to stay prose: a help page that grew a line about the
+		// reader's own lists would be a claim channel like any other.
+		"/help",
 	}
 
 	before := map[string]string{}

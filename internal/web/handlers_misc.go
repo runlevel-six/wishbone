@@ -75,6 +75,21 @@ func (s *Server) handleImage(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, f)
 }
 
+// handleHelp renders the in-app manual (templates.Help).
+//
+// It is the only page besides sign-in that an anonymous reader may see, and that
+// is the point of it: two of the things people most need help with — a forgotten
+// password, and how to get an invite at all — are things you cannot get past in
+// order to reach a page that is behind the session check. Serving it costs
+// nothing, because the page reads no data: it is prose plus this instance's own
+// address and whether link lookup is on.
+func (s *Server) handleHelp(w http.ResponseWriter, r *http.Request) {
+	s.render(w, r, http.StatusOK, templates.Help(s.page(w, r, "Help"), templates.HelpData{
+		ShareTargetURL: s.baseURL(r) + "/share-target",
+		FetchEnabled:   s.ex.Enabled(),
+	}))
+}
+
 func (s *Server) handleAdmin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -209,13 +224,21 @@ func (s *Server) inviteLink(r *http.Request) string {
 	if token == "" {
 		return ""
 	}
-	base := s.cfg.BaseURL
-	if base == "" {
-		scheme := "https"
-		if !s.cfg.SecureCookies {
-			scheme = "http"
-		}
-		base = scheme + "://" + r.Host
+	return s.baseURL(r) + "/register/" + token
+}
+
+// baseURL is this instance's own address, for the two places that have to hand
+// somebody a whole URL to copy: an invite link, and the share-target address the
+// iPhone shortcut is built around. Configured if it is configured, and otherwise
+// the host this request arrived on, which is right in every deployment that is
+// not behind a rewriting proxy.
+func (s *Server) baseURL(r *http.Request) string {
+	if s.cfg.BaseURL != "" {
+		return s.cfg.BaseURL
 	}
-	return base + "/register/" + token
+	scheme := "https"
+	if !s.cfg.SecureCookies {
+		scheme = "http"
+	}
+	return scheme + "://" + r.Host
 }

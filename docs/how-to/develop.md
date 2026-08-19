@@ -76,6 +76,32 @@ field schema. Field types are `text`, `number`, `select` (with `options`) and
 Attributes are validated against that schema on every write, and unknown keys
 are rejected rather than stored.
 
+## Changing user-facing copy
+
+The family never reads this directory. What they read is
+`internal/web/templates/help.templ`, rendered at `/help` — so a change to how
+something behaves needs the help page changed with it, in the same commit, or
+the app is now confidently describing something it no longer does.
+
+Three things to know before editing it:
+
+- **Quote the interface exactly.** People search the page for the words on the
+  button in front of them. `TestHelpNamesTheControlsAsTheyAreLabeled` checks a
+  set of labels against the pages that actually render them, in both directions.
+- **Pages link into it by fragment** — the item form does it once per way a link
+  lookup can disappoint somebody. `TestHelpLinksInTheAppAllLand` reads every
+  `.templ` file and fails if a fragment no longer names a section, which is what
+  renaming one quietly costs.
+- **templ parses prose.** A text line beginning with `if`, `for`, `else`,
+  `switch` or `case` is read as Go, and the parse error points somewhere else
+  entirely. Rewrap the line.
+
+The page reads no data at all, which is what lets it be served to someone who is
+not signed in — the reader with a forgotten password cannot get past `/login` to
+reach anything else. Keep it that way: `TestHelpIsTheSameForEveryReader` and the
+`/help` entry in `TestOwnerResponsesUnchangedByClaims` both fail if it starts
+rendering somebody's lists.
+
 ## Testing conventions
 
 - Tests use a real SQLite database in a temp directory, not a mock. The claim

@@ -21,7 +21,13 @@ templ Login(p Page, username, errMsg, next string) {
 			</label>
 			<button type="submit" class="primary">Sign in</button>
 		</form>
-		<p class="muted small">Wishbone is invite only. Ask whoever runs it for a link.</p>
+		// The help page is reachable from here on purpose: a forgotten password and
+		// a missing invite are the two problems you cannot get past this page to
+		// read about. See handleHelp.
+		<p class="muted small">
+			Wishbone is invite only. Ask whoever runs it for a link.
+			<a href="/help#signing-in">Trouble signing in?</a>
+		</p>
 	}
 }
 

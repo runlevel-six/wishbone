@@ -14,6 +14,14 @@ These docs follow [Diátaxis](https://diataxis.fr): four kinds of documentation,
 kept separate because they answer different questions. Start with whichever
 column matches what you are doing.
 
+They are written for whoever runs Wishbone. **The people using it have their own
+help inside the app**, at `/help` — reachable from the header on every page,
+from the sign-in page, and from the places where something can go wrong, like the
+add-item form. Nobody stuck on a half-filled item form is going to come and read
+a repository, so anything the family needs belongs there; see
+[Work on the code](how-to/develop.md#changing-user-facing-copy) for how the two
+are kept in step.
+
 | | **Practical steps** | **Theory** |
 |---|---|---|
 | **Study** | [Tutorials](#tutorials) — learn by doing | [Explanation](#explanation) — understand why |

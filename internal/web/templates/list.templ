@@ -309,6 +309,9 @@ templ listSettings(p Page, d ListPageData) {
 					<option value="selected" selected?={ d.Page.List.Visibility == "selected" }>Only people I pick</option>
 					<option value="private" selected?={ d.Page.List.Visibility == "private" }>Just me</option>
 				</select>
+				<span class="hint">
+					<a href="/help#who-can-see">What each of these means</a>
+				</span>
 			</label>
 			<fieldset class="shares">
 				<legend>People who can see it (when set to &ldquo;only people I pick&rdquo;)</legend>

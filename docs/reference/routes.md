@@ -14,6 +14,7 @@ require a CSRF token, sent either in the `csrf_token` form field or the
 | GET | `/readyz` | Readiness; verifies the database is writable |
 | GET | `/static/*` | Stylesheet, htmx, the one script, icons, web manifest |
 | GET | `/sw.js` | Service worker. Served from the root because that is its scope; caches only `/static/` |
+| GET | `/help` | The in-app help page. Deliberately outside both the anonymous and authenticated groups: it is the same prose for everyone, it reads no data, and the reader who needs it most may be the one who cannot get past sign-in. Renders the header only when somebody is signed in, the invite section only for an admin, and the link-lookup sections only when fetching is enabled |
 | GET | `/login` | Sign-in form. Redirects to `/` if already signed in |
 | POST | `/login` | Rate limited per username and per address. Honors a `next` field, restricted to same-site paths |
 | GET | `/register/{token}` | Invite registration form; 404 if the invite is used or expired |

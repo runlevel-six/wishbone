@@ -31,7 +31,12 @@ templ Dashboard(p Page, d DashboardData) {
 		<section>
 			<h2>Your lists</h2>
 			if len(d.Mine) == 0 {
-				<p class="muted">You have no lists yet. Make one and start adding things you would like.</p>
+				// The one moment when somebody is certainly new here, and the only
+				// place the help page is offered rather than just linked.
+				<p class="muted">
+					You have no lists yet. Make one and start adding things you would like — or
+					read <a href="/help">how Wishbone works</a> first.
+				</p>
 			}
 			<ul class="list-grid">
 				for _, l := range d.Mine {

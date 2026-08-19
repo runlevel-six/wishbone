@@ -59,6 +59,9 @@ templ Layout(p Page) {
 						if p.IsAdmin() {
 							<a href="/admin" class={ navClass(p.Path, "/admin") }>Admin</a>
 						}
+						// Last, where a help link is looked for, and on every page
+						// because the moment somebody needs it is not predictable.
+						<a href="/help" class={ navClass(p.Path, "/help") }>Help</a>
 					</nav>
 					<form method="post" action="/logout" class="inline">
 						<input type="hidden" name="csrf_token" value={ p.CSRF }/>
