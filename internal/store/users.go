@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"strings"
 
 	"wishbone/internal/model"
 )
@@ -29,7 +28,15 @@ func scanUser(sc interface{ Scan(...any) error }) (*model.User, error) {
 	return &u, nil
 }
 
-func (s *Store) CreateUser(ctx context.Context, u *model.User) error {
+// insertUser writes one user row, filling in the defaults every caller wants.
+//
+// Both account-creation paths go through it — CreateUser for an admin-made
+// account, RedeemInvite inside its transaction — so the column list and its
+// placeholders live in exactly one place. RedeemInvite used to keep its own
+// copy, and adding the theme column to userCols left that copy one value short:
+// admin-created accounts kept working while every invite registration failed
+// with "8 values for 9 columns".
+func insertUser(ctx context.Context, q Querier, u *model.User) error {
 	if u.ID == "" {
 		u.ID = model.NewID()
 	}
@@ -39,14 +46,18 @@ func (s *Store) CreateUser(ctx context.Context, u *model.User) error {
 	if u.Theme == "" {
 		u.Theme = model.ThemeForest
 	}
-	_, err := s.db.ExecContext(ctx,
+	_, err := q.ExecContext(ctx,
 		`INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?,?)`,
 		u.ID, u.Username, u.DisplayName, u.PasswordHash,
 		boolInt(u.IsAdmin), boolInt(u.MustReset), string(u.Theme), u.CreatedAt, u.LegacyID)
-	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
+	if isUniqueViolation(err) {
 		return model.ErrConflict
 	}
 	return err
+}
+
+func (s *Store) CreateUser(ctx context.Context, u *model.User) error {
+	return insertUser(ctx, s.db, u)
 }
 
 func (s *Store) UserByID(ctx context.Context, id string) (*model.User, error) {

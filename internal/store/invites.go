@@ -44,14 +44,7 @@ func (s *Store) RedeemInvite(ctx context.Context, tokenHash string, u *model.Use
 	return s.write(ctx, func(q Querier) error {
 		// The user row goes in first: invites.used_by references users(id), so
 		// burning the invite before the account exists trips the foreign key.
-		_, err := q.ExecContext(ctx,
-			`INSERT INTO users (`+userCols+`) VALUES (?,?,?,?,?,?,?,?)`,
-			u.ID, u.Username, u.DisplayName, u.PasswordHash,
-			boolInt(u.IsAdmin), boolInt(u.MustReset), u.CreatedAt, u.LegacyID)
-		if err != nil {
-			if isUniqueViolation(err) {
-				return model.ErrConflict
-			}
+		if err := insertUser(ctx, q, u); err != nil {
 			return err
 		}
 
