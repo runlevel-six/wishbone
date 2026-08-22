@@ -118,6 +118,48 @@ The one thing it does say is about the *destination's* visibility: moving
 something onto a private list hides it from everyone. That is the owner's own
 setting, not anyone's claim, so they are told about it.
 
+**The claimed-vs-total bar** is the second bullet in that list of failures — a
+"N of M claimed" counter — built on purpose, for buyers only. It is worth
+reading as the case where the rule cost a feature half its scope.
+
+The ask was a bar on every list card and every list page, so that a buyer could
+see at a glance what was left *and* an owner could see whether to add more
+items. The first half is free. The second half is the leak vector by name: told
+that 7 of 12 are claimed, an owner knows seven presents are coming, which is the
+one thing the whole app exists to withhold. Only the buyer's half shipped. An
+owner's card shows the item count, as it always did.
+
+Three things keep it that way, and the reason there are three is that this
+widget is one line of arithmetic away from existing on the wrong page:
+
+- **The types are split.** `templates.ListSummary` — the owner's card — has no
+  claim fields. `templates.VisibleListSummary` embeds it and adds the progress.
+  `DashboardData.Mine` is the first, `.Others` is the second, so the owner's loop
+  cannot draw a bar for want of anything to draw it from. This is
+  `OwnerItemView` vs `ViewerItemView` at the size of a whole list.
+- **The aggregate is behind the chokepoint.** `store.ProgressForLists` takes a
+  viewer, returns `ErrOwnerBlind` if any list in the batch is theirs, *and*
+  excludes owned lists in the SQL. The handler could have totted the same number
+  up from the item rows it already had — `items.claimed_qty` is right there — and
+  that is exactly why it does not: a one-liner in a handler is a one-liner
+  somebody pastes into the other loop.
+- **On the list page it is derived, not queried.** `view.ListPage.Progress()`
+  reads `ViewerItems`, which is empty for an owner. No extra query, and nothing
+  to guard, because the data an owner's page holds cannot produce the number.
+
+`claimCanaries` carries `claim-bar` and `still available`, so
+`TestOwnerBlindnessAcrossAllRoutes` checks every owner-rendered route for the
+markup and the wording, and `TestOwnerResponsesUnchangedByClaims` already
+compared the owner's dashboard byte for byte across a claim landing.
+`TestClaimBarIsShownToABuyer` is the counterpart that stops all of that from
+being vacuous.
+
+One detail that is easy to get wrong: it counts **items, not units**. An item
+asking for three with one claim on it is still there to buy, so it counts as
+available. Counting units would report a list as fuller than it is, and it would
+also disagree with the dashboard, which counts live items. Removed items — the
+soft-deleted ones a claimer still sees, per §3.4 — are excluded from both.
+
 ## The leaks that are accepted, and why
 
 **Reducing quantity below the claimed count is refused.** The owner is told

@@ -65,7 +65,20 @@ func (p Page) DisplayName() string {
 	return p.User.DisplayName
 }
 
-// ListSummary is one row on the dashboard.
+// Username is the name this person signs in with, for the account form to show
+// back to them.
+func (p Page) Username() string {
+	if p.User == nil {
+		return ""
+	}
+	return p.User.Username
+}
+
+// ListSummary is one of your own lists on the dashboard.
+//
+// It has no claim fields and none may be added. This is the OwnerItemView rule
+// (plan §3.2) at the size of a whole list: a card built from this type cannot
+// draw a claimed-vs-total bar, because there is nothing on it to draw one from.
 type ListSummary struct {
 	List      *model.List
 	OwnerName string
@@ -73,10 +86,19 @@ type ListSummary struct {
 	IsOwner   bool
 }
 
-// Dashboard is the home page model.
+// VisibleListSummary is somebody else's list on the dashboard, where how much
+// is already claimed is the thing a buyer came to find out.
+type VisibleListSummary struct {
+	ListSummary
+	// Progress is nil for a list with no items, and draws nothing.
+	Progress *view.Progress
+}
+
+// Dashboard is the home page model. The two slices carry different types on
+// purpose, so the claim-bearing one cannot be handed to the owner's loop.
 type DashboardData struct {
 	Mine       []ListSummary
-	Others     []ListSummary
+	Others     []VisibleListSummary
 	ClaimCount int
 }
 
@@ -186,10 +208,15 @@ type ItemFormData struct {
 	// usable product details — common on marketplaces that serve an
 	// interstitial to non-browser clients.
 	NothingFound bool
-	Sources      map[string]string
-	FetchError   string
-	Duplicates   []DuplicateWarning
-	FetchEnabled bool
+	// NotProduct names the shape of an address that was recognized as a listing
+	// rather than a product, so nothing was fetched at all. NotProductLabel is
+	// the same fact phrased for a person to read.
+	NotProduct      string
+	NotProductLabel string
+	Sources         map[string]string
+	FetchError      string
+	Duplicates      []DuplicateWarning
+	FetchEnabled    bool
 	// AutoLookup runs the link lookup as soon as the page loads, for links
 	// arriving from a phone's share sheet.
 	AutoLookup bool

@@ -31,7 +31,7 @@ until they choose a password.
 | GET | `/` | Dashboard: your lists and lists shared with you |
 | POST | `/logout` | Deletes the session row and clears the cookie |
 | GET | `/account` | Profile and password forms |
-| POST | `/account/profile` | Change display name |
+| POST | `/account/profile` | Change display name and sign-in name (`username`). The username is written first, so a name already taken comes back `400` with nothing saved; it is `UNIQUE COLLATE NOCASE`, and the same validation registration applies |
 | POST | `/account/password` | Change password; signs out all other sessions |
 | POST | `/account/theme` | Set the palette this account wears (`theme=forest`/`cranberry`/`navy`). An unknown value is clamped to the default rather than refused |
 | GET | `/claims` | Everything you have claimed, across lists. Opening it is what "seen" means: it clears the unread count on **Claimed** and marks the rows that count was about |

@@ -59,6 +59,7 @@ templ Dashboard(p Page, d DashboardData) {
 					<li class="card list-card">
 						<a class="list-name" href={ templ.SafeURL("/lists/" + l.List.ID) }>{ l.List.Name }</a>
 						<p class="muted small">{ l.OwnerName } &middot; { plural(l.ItemCount, "item", "items") }</p>
+						@ClaimBar(l.Progress)
 					</li>
 				}
 			</ul>

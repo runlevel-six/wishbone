@@ -136,6 +136,19 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 
 	preview, err := s.ex.Fetch(ctx, raw)
 	if err != nil {
+		// A listing is not a failed lookup and must not be reported as one. The
+		// address is the thing that is wrong, the person can fix it in one click,
+		// and telling them that is the whole point.
+		var shape *extract.NotAProductError
+		if errors.As(err, &shape) {
+			f.NotProduct = string(shape.Shape)
+			f.NotProductLabel = shape.Shape.Label()
+			s.log.Info("link lookup skipped: not a product page",
+				slog.String("url", raw),
+				slog.String("shape", string(shape.Shape)))
+			s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
+			return
+		}
 		// Logged as well as shown: a lookup that fails for everyone is an
 		// operational problem (egress, DNS, a blocked user agent), and the
 		// person adding an item is the wrong place to diagnose it from.

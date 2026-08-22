@@ -116,6 +116,94 @@ func (s *Store) ClaimsForList(ctx context.Context, listID, viewerID string) (map
 	return out, rows.Err()
 }
 
+// ListProgress is how much of one list is already taken care of, as a
+// non-owning viewer is allowed to see it.
+type ListProgress struct {
+	ListID string
+	// Items is the number of live items on the list.
+	Items int
+	// Claimed counts the items whose every unit is claimed. An item asking for
+	// three with one claim on it is not claimed: two are still there to buy, and
+	// counting it would tell a buyer the list is fuller than it is.
+	Claimed int
+}
+
+// Available is the number of items with at least one unit still unclaimed.
+func (p *ListProgress) Available() int { return p.Items - p.Claimed }
+
+// Percent is Claimed as a whole-number share of Items, for the width of a bar.
+func (p *ListProgress) Percent() int {
+	if p.Items <= 0 {
+		return 0
+	}
+	return p.Claimed * 100 / p.Items
+}
+
+// ProgressForLists returns claimed-vs-total counts for lists the viewer does
+// not own, keyed by list ID. Lists with no items come back as zeroes rather
+// than missing.
+//
+// Plan §3.2 names this aggregate as a leak vector in its own right — "any
+// 'N remaining' / 'N of M claimed' counter" — so it lives behind the same door
+// as every other claim read instead of being totted up in a handler from the
+// item rows, which already carry claimed_qty and would make it a one-liner
+// anybody could paste into the wrong loop.
+//
+// It fails closed twice. A list the viewer owns is ErrOwnerBlind rather than a
+// zero, so a caller's mistake is loud; and the aggregate query excludes owned
+// lists on its own, so a future caller who swallows that error still learns
+// nothing. The redundancy is deliberate — one of the two is a rule and the
+// other is arithmetic that cannot be talked out of it.
+func (s *Store) ProgressForLists(ctx context.Context, listIDs []string, viewerID string) (map[string]*ListProgress, error) {
+	out := map[string]*ListProgress{}
+	if len(listIDs) == 0 {
+		return out, nil
+	}
+
+	args := make([]any, 0, len(listIDs)+1)
+	args = append(args, viewerID)
+	placeholders := make([]string, len(listIDs))
+	for i, id := range listIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+		out[id] = &ListProgress{ListID: id}
+	}
+	in := "(" + strings.Join(placeholders, ",") + ")"
+
+	var owned int
+	if err := s.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM lists WHERE owner_id = ? AND id IN `+in, args...).Scan(&owned); err != nil {
+		return nil, err
+	}
+	if owned > 0 {
+		return nil, model.ErrOwnerBlind
+	}
+
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT i.list_id,
+		        COUNT(*),
+		        COALESCE(SUM(CASE WHEN i.claimed_qty >= i.quantity THEN 1 ELSE 0 END), 0)
+		   FROM items i
+		   JOIN lists l ON l.id = i.list_id
+		  WHERE i.deleted_at IS NULL
+		    AND l.owner_id <> ?
+		    AND i.list_id IN `+in+`
+		  GROUP BY i.list_id`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p ListProgress
+		if err := rows.Scan(&p.ListID, &p.Items, &p.Claimed); err != nil {
+			return nil, err
+		}
+		out[p.ListID] = &p
+	}
+	return out, rows.Err()
+}
+
 // ClaimsForItem is the single-item form of ClaimsForList.
 func (s *Store) ClaimsForItem(ctx context.Context, itemID, viewerID string) (*ItemClaims, error) {
 	_, ownerID, err := ownerOfItem(ctx, s.db, itemID)

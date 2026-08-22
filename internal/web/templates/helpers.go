@@ -10,7 +10,30 @@ import (
 	"time"
 
 	"wishbone/internal/model"
+	"wishbone/internal/view"
 )
+
+// claimBarLabel says what a claim bar shows. The same words serve as the
+// visible caption and as the element's accessible name, so a screen reader and
+// a pair of eyes are told the same thing rather than two versions of it.
+//
+// Phrased in items rather than units on purpose: an item asking for three with
+// one claim on it is still there to buy, and "1 of 3" would read as progress
+// towards finishing it.
+func claimBarLabel(p *view.Progress) string {
+	if p == nil {
+		return ""
+	}
+	switch {
+	case p.Available == 0:
+		return "Every item is claimed"
+	case p.Claimed == 0:
+		return "Nothing claimed yet, all " + itoa(p.Items) + " available"
+	default:
+		return itoa(p.Claimed) + " of " + itoa(p.Items) + " claimed, " +
+			itoa(p.Available) + " still available"
+	}
+}
 
 // csrfHeader renders the hx-headers attribute configured once on <body>, so
 // every htmx request carries the CSRF token (plan §4).

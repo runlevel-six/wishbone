@@ -5,12 +5,14 @@ What happens between pasting a URL and a filled-in form.
 ## Pipeline
 
 1. **Normalize** the URL (below).
-2. **Fetch** it through the address-guarded client: `GET`, `text/html`
+2. **Classify the address.** A search, listing or cart address is refused here,
+   before any request is made (below).
+3. **Fetch** it through the address-guarded client: `GET`, `text/html`
    required, 2 MiB cap, 5s total, 5 redirects maximum.
-3. **Parse the whole document**, bounded by the fetch cap above.
-4. **Run the chain**, merging field by field.
-5. **Apply the soft-404 guard**.
-6. Hand the result to the form, which fills in nothing if the result is
+4. **Parse the whole document**, bounded by the fetch cap above.
+5. **Run the chain**, merging field by field.
+6. **Apply the soft-404 guard**.
+7. Hand the result to the form, which fills in nothing if the result is
    suspect.
 
 ## URL normalization
@@ -34,6 +36,54 @@ because it proved it.
 
 Duplicate detection compares normalized URLs across every list the person can
 see, and **warns without blocking**.
+
+## Addresses that cannot be products
+
+`extract.ClassifyNonProduct` runs on the normalized URL, before the fetch. When
+it names a shape, `Service.Fetch` returns `*NotAProductError` (matchable with
+`errors.Is(err, ErrNotAProductPage)`) and nothing is requested.
+
+| Shape | What it is |
+|---|---|
+| `search` | A results page for terms somebody typed |
+| `category` | A brand, department or category listing |
+| `cart` | A cart or checkout page |
+
+The item is still saved with whatever address was pasted — this only declines to
+*look it up*. The form says which shape it was and points at
+[`/help#not-a-product`](../../internal/web/templates/help.templ).
+
+**Why before the fetch.** A listing answers `200` with a page full of products.
+The tiers then either pick one of them — the confidently-wrong-item failure with
+a new cause — or find nothing and hand back a blank form, which is
+indistinguishable from a lookup that failed on a good link. Neither tells the
+person the one thing that would help, and the second invites a retry that cannot
+work.
+
+**Why host-keyed rather than general.** Two rule sets:
+
+- **Universal segments**, applied to every host, because they are spelled-out
+  English words that mean the same thing everywhere: `search`, `cart`,
+  `checkout`, `basket`.
+- **Per-host segments**, for the abbreviations. `/s/`, `/b/`, `/c/`, `/pl/`,
+  `/sch/`, `/browse`, `/cp/` mean listings on the hosts that define them and
+  something else entirely elsewhere — `/s/some-product` is a perfectly good
+  product path on a shop that has never heard of the convention.
+
+A product segment is never in the table; that is what makes the table safe. The
+home-improvement chain serves products from `/p/{slug}/{id}`, so `p` is absent
+and a product address falls straight through. A wrong "that is not a product" is
+worse than the blank form it replaces, because it tells somebody their good link
+is bad — so an unknown host always falls through to an ordinary lookup.
+
+**Where the cases came from.** The production log, not invention. Over two days
+one family member pasted a brand listing three times in seven minutes and a
+search address once with the typed terms still misspelled in the path
+(`/s/Ryobi%20cordless%201gallon%20rank%20sprayer%20woth%20replacement%20tank`).
+Four of the seven failed lookups in that window were addresses that could never
+have worked. `TestClassifyNonProductRecognizesListings` is built from those
+addresses; `TestClassifyNonProductLetsProductsThrough` is the other half and is
+the more important of the two.
 
 ## Chain tiers
 
@@ -402,6 +452,49 @@ images are proxied.
 and re-validated on save; a status arriving without a link, or one that is not
 a value the guard can produce, is stored as `unknown`. Editing an item never
 changes it.
+
+### A retailer that refuses everything
+
+Measured 2026-08-22, on the home-improvement chain whose 403s dominate the
+production log. Recorded here so it is not re-diagnosed: **there is no lookup
+path for these product pages**, and the answer is the manual form.
+
+Every one of these was tried against the same product address:
+
+| Attempt | Result |
+|---|---|
+| `check-url -impersonate chrome`, from the sandbox | 403, 2259 bytes |
+| `check-url -impersonate chrome`, **from the production pod** | 403, 2259 bytes |
+| Sidecar tier, called directly on its own port | 403 (`Res not ok. Status: 403 Forbidden`) |
+| `curl`, bare | 403 |
+| `curl` with a Chrome User-Agent | 403 |
+| `curl` with the full Chrome header set (client hints, `Sec-Fetch-*`, HTTP/2) | 403 |
+| `facebookexternalhit`, `Twitterbot`, `Slackbot`, `WhatsApp`, `Discordbot` | 403, 476 bytes |
+| `Googlebot` | 403, 476 bytes |
+| `/p/svcs/frontEndModel/{id}`, `/p/{id}` | 403 |
+
+Three things worth taking from the table:
+
+- **It is not the egress address.** Production is a residential connection and
+  the sandbox is a datacenter one; both are refused identically. A browser on
+  that same residential connection opens the page.
+- **It is not the fingerprint, or not only.** Chrome's ClientHello plus Chrome's
+  full header set changes nothing, and the sidecar — a separate client with its
+  own stack — is refused too. The provider is running a JS sensor, so the
+  request that succeeds is the one that executed their script.
+- **The block page differs by claimed identity** (2259 bytes for a browser UA,
+  476 for a crawler), which means the classification is deliberate rather than a
+  blanket rule. Declared crawlers, `Googlebot` included, are refused — real
+  `Googlebot` is verified by reverse DNS from Google's own ranges, so claiming it
+  from anywhere else gets nothing.
+
+Beating a JS sensor would mean running a real browser per lookup. That is not
+in scope, and the refusal path already handles this correctly: the link is
+saved, nothing is claimed about it, and the person types the two fields. What
+*was* worth fixing is the retrying — see
+[Addresses that cannot be products](#addresses-that-cannot-be-products), which
+covers the search and brand addresses from the same log, and the `/help`
+wording, which now says plainly that some shops refuse every time.
 
 ## Images
 

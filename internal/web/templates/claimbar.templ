@@ -1,0 +1,33 @@
+package templates
+
+import "wishbone/internal/view"
+
+// ClaimBar draws how much of a list is already taken care of.
+//
+// It accepts only a *view.Progress, and nothing an owner is handed can produce
+// one: on the list page it is built from ViewerItems, which is empty for an
+// owner, and on the dashboard it comes from the store's owner-blind aggregate
+// via VisibleListSummary, which the owner's loop has no access to. So the bar
+// cannot appear on your own list by mistake — plan §3.2 names this exact widget
+// as a leak vector, and the type is the thing keeping it closed.
+//
+// A nil Progress draws nothing at all, which is what a list with no items on it
+// should look like rather than an empty bar reading zero.
+//
+// The element is a real <progress>. It carries its own meaning and its own
+// accessible value without a role or an aria-value attribute, and it needs no
+// inline style to show a proportion — nothing else in this codebase uses one,
+// and a width computed into a style attribute would be the first.
+templ ClaimBar(p *view.Progress) {
+	if p != nil {
+		<div class="claim-bar">
+			<progress
+				class="claim-bar-track"
+				value={ itoa(p.Claimed) }
+				max={ itoa(p.Items) }
+				aria-label={ claimBarLabel(p) }
+			></progress>
+			<p class="claim-bar-text small">{ claimBarLabel(p) }</p>
+		</div>
+	}
+}

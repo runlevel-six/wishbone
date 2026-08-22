@@ -43,6 +43,15 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				<a href="/help#could-not-read">What to check</a>.
 			</div>
 		}
+		if f.NotProduct != "" {
+			<div class="flash flash-info">
+				<strong>That address is { f.NotProductLabel }, not one product.</strong>
+				Nothing was looked up, because a page of many things has no one name and no
+				one price. Go back to the shop, open the exact item you want, and copy the
+				address from there — then this fills itself in.
+				<a href="/help#not-a-product">How to get the right link</a>.
+			</div>
+		}
 		if f.Blocked {
 			<div class="flash flash-info">
 				<strong>That shop would not let Wishbone read the page.</strong>

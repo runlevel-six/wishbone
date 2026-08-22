@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"wishbone/internal/model"
+	"wishbone/internal/view"
 	"wishbone/internal/web/templates"
 )
 
@@ -46,14 +47,26 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			List: l, OwnerName: u.DisplayName, ItemCount: len(items), IsOwner: true,
 		})
 	}
+	// One aggregate for every visible list, rather than a fetch per list: it
+	// carries the item count as well as the claimed count, so it replaces the
+	// per-list item read this loop used to do. It is also the chokepoint — a list
+	// of the viewer's own in here is ErrOwnerBlind, not a silent zero.
+	otherIDs := make([]string, 0, len(others))
 	for _, l := range others {
-		items, err := s.st.LiveItemsForList(ctx, l.ID)
-		if err != nil {
-			s.fail(w, r, err)
-			return
-		}
-		data.Others = append(data.Others, templates.ListSummary{
-			List: l, OwnerName: ownerName[l.OwnerID], ItemCount: len(items),
+		otherIDs = append(otherIDs, l.ID)
+	}
+	progress, err := s.st.ProgressForLists(ctx, otherIDs, u.ID)
+	if err != nil {
+		s.fail(w, r, err)
+		return
+	}
+	for _, l := range others {
+		p := progress[l.ID]
+		data.Others = append(data.Others, templates.VisibleListSummary{
+			ListSummary: templates.ListSummary{
+				List: l, OwnerName: ownerName[l.OwnerID], ItemCount: p.Items,
+			},
+			Progress: view.ProgressFrom(p),
 		})
 	}
 

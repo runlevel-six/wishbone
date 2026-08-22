@@ -52,7 +52,7 @@ templ Help(p Page, d HelpData) {
 				<li><a href="#organize">Sort a list, reorder it, move an item</a></li>
 				<li><a href="#claiming">Claim something from somebody else's list</a></li>
 				<li><a href="#owner-blind">Why your own list never shows claims</a></li>
-				<li><a href="#account">Your name, your color, your password</a></li>
+				<li><a href="#account">Your names, your color, your password</a></li>
 				<li><a href="#signing-in">Signing in, and getting an invite</a></li>
 				if p.IsAdmin() {
 					<li><a href="#invites">Inviting people, and locked-out accounts</a></li>
@@ -135,6 +135,21 @@ templ Help(p Page, d HelpData) {
 					them still leaves you with a good item — the link is saved either way, and the
 					rest is a form you can type in.
 				</p>
+				<h3 id="not-a-product">&ldquo;That address is a search results page&rdquo;</h3>
+				<p>
+					This one is worth knowing because it is the easiest to fix and the easiest to
+					mistake for a broken lookup. If you search a shop and then copy the address out
+					of your browser bar, what you have copied is the search — the whole page of
+					results — and not any product on it. The same is true of a brand or department
+					listing, and of a cart.
+				</p>
+				<p>
+					Wishbone recognizes those addresses and does not even try, because a page of
+					many things has no one name and no one price to read. Click the item you
+					actually want, so the shop shows you that product on its own page, and copy the
+					address from there. On a phone it is easier to use the share button on the
+					product page than to copy the address by hand.
+				</p>
 				<h3 id="partly-filled">Some fields filled in and others did not</h3>
 				<p>
 					This is the common one, and it is not a fault. The name arrives almost always;
@@ -183,8 +198,12 @@ templ Help(p Page, d HelpData) {
 				</p>
 				<p>
 					The fastest route is copying the name and price out of the tab you already have
-					open. The same shop may work an hour later, or for a different product; that is
-					the refusal being intermittent, not you doing anything differently.
+					open. Some shops refuse intermittently — the same address may work an hour
+					later, or for a different product, and that is the refusal wavering rather than
+					you doing anything differently. Others refuse every single time, no matter who
+					asks or how often. If a shop has never once filled the form in for you, it
+					belongs in the second group: type the details and do not spend another thought
+					on it.
 				</p>
 				<h3 id="nothing-found">The page loaded but nothing came back</h3>
 				<p>
@@ -385,12 +404,20 @@ templ Help(p Page, d HelpData) {
 			</p>
 		</section>
 		<section class="card help" id="account">
-			<h2>Your name, your color, your password</h2>
+			<h2>Your names, your color, your password</h2>
 			<p><strong>Account</strong> in the header holds all three.</p>
 			<ul>
 				<li>
 					<strong>Display name</strong> — what the family sees beside your lists and your
 					claims. Use the name they call you.
+				</li>
+				<li>
+					<strong>Sign-in name</strong> — what you type to sign in, and nobody else's
+					business. You can change it whenever you like: save it and it is the new one
+					immediately, though it does not sign you out, so the change only shows up the
+					next time you sign in. Two people cannot share one, capital letters or not:
+					when somebody already has the name you wanted, Wishbone says so and changes
+					nothing.
 				</li>
 				<li>
 					<strong>Color</strong> — which palette Wishbone wears for you. It is yours alone:

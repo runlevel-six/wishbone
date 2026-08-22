@@ -110,6 +110,26 @@ func (s *Store) UpdateProfile(ctx context.Context, userID, displayName string) e
 	return err
 }
 
+// SetUsername changes the name someone signs in with.
+//
+// The column is UNIQUE COLLATE NOCASE, so the database is what decides whether
+// a name is free — not a SELECT beforehand, which would be a race with any
+// other registration or rename in flight. A collision comes back as
+// ErrConflict, the same answer registration gives.
+//
+// Nothing else has to move. Sessions key on the user's ID, so a rename does not
+// sign anybody out; invites are spent and unrelated; and the audit lines that
+// record a username recorded the one in use at the time, which is what a log is
+// for.
+func (s *Store) SetUsername(ctx context.Context, userID, username string) error {
+	_, err := s.db.ExecContext(ctx,
+		`UPDATE users SET username = ? WHERE id = ?`, username, userID)
+	if isUniqueViolation(err) {
+		return model.ErrConflict
+	}
+	return err
+}
+
 // SetTheme records which palette this person wants. The value is clamped here
 // too, so nothing but a known palette is ever written.
 func (s *Store) SetTheme(ctx context.Context, userID string, theme model.Theme) error {

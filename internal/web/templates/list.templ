@@ -34,6 +34,9 @@ templ ListView(p Page, d ListPageData) {
 				}
 			</ul>
 		} else {
+			// Only in the viewer's branch of this template, and fed by a method
+			// that returns nil for an owner regardless (plan §3.2).
+			@ClaimBar(d.Page.Progress())
 			if len(d.Page.ViewerItems) == 0 {
 				<p class="muted">This list is empty right now.</p>
 			}

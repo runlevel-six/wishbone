@@ -135,13 +135,11 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 			templates.Register(s.page(w, r, "Create account"), token, username, displayName, msg))
 	}
 
+	if msg := validateUsername(username); msg != "" {
+		show(msg)
+		return
+	}
 	switch {
-	case len(username) < 2 || len(username) > 40:
-		show("Pick a username between 2 and 40 characters.")
-		return
-	case strings.ContainsAny(username, " \t/?#"):
-		show("Usernames cannot contain spaces or slashes.")
-		return
 	case displayName == "" || len(displayName) > 80:
 		show("Please give a name your family will recognize.")
 		return
@@ -193,15 +191,62 @@ func (s *Server) handleAccount(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, http.StatusOK, templates.Account(s.page(w, r, "Account"), u.MustReset, "", ""))
 }
 
+// validateUsername returns the message to show for a username that will not
+// do, or "" when it is fine.
+//
+// Registration and renaming share it on purpose: a name the sign-up form would
+// have refused must not become reachable by signing up with something else and
+// renaming afterwards.
+func validateUsername(username string) string {
+	switch {
+	case len(username) < 2 || len(username) > 40:
+		return "Pick a username between 2 and 40 characters."
+	case strings.ContainsAny(username, " \t/?#"):
+		return "Usernames cannot contain spaces or slashes."
+	}
+	return ""
+}
+
+// handleAccountProfile saves the two names a person has: the one their family
+// sees, and the one they sign in with.
+//
+// The sign-in name is written first, because it is the only one of the two that
+// can be refused. Doing it in the other order would leave a display name saved
+// under a failed rename, and the page would come back with an error next to a
+// change that had in fact been applied.
 func (s *Server) handleAccountProfile(w http.ResponseWriter, r *http.Request) {
-	u := userFrom(r.Context())
+	ctx := r.Context()
+	u := userFrom(ctx)
 	name := strings.TrimSpace(r.PostFormValue("display_name"))
-	if name == "" || len(name) > 80 {
+	username := strings.TrimSpace(r.PostFormValue("username"))
+
+	show := func(msg string) {
 		s.render(w, r, http.StatusBadRequest,
-			templates.Account(s.page(w, r, "Account"), u.MustReset, "That name will not work.", ""))
+			templates.Account(s.page(w, r, "Account"), u.MustReset, msg, ""))
+	}
+	if name == "" || len(name) > 80 {
+		show("That name will not work.")
 		return
 	}
-	if err := s.st.UpdateProfile(r.Context(), u.ID, name); err != nil {
+	if msg := validateUsername(username); msg != "" {
+		show(msg)
+		return
+	}
+
+	// Compared exactly rather than case-insensitively, so somebody can fix the
+	// capitalization of their own name. The column is NOCASE-unique, so that
+	// write collides with nothing but the row already holding it.
+	if username != u.Username {
+		switch err := s.st.SetUsername(ctx, u.ID, username); {
+		case errors.Is(err, model.ErrConflict):
+			show("Somebody already signs in with that name. Please pick another.")
+			return
+		case err != nil:
+			s.fail(w, r, err)
+			return
+		}
+	}
+	if err := s.st.UpdateProfile(ctx, u.ID, name); err != nil {
 		s.fail(w, r, err)
 		return
 	}

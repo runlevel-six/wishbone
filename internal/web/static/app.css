@@ -324,6 +324,18 @@ h3 { font-size: 1rem; margin: 0 0 .35rem; }
 .list-name { font-weight: 600; font-size: 1.05rem; color: var(--ink); text-decoration: none; }
 .list-name:hover { text-decoration: underline; }
 
+/* The claim bar. Only ever drawn on somebody else's list (plan §3.2), so it is
+   styled from a buyer's side: the filled part is what is already taken care of,
+   and the empty part is what is left for them. It borrows --accent and --line
+   rather than naming colors of its own, so it follows each person's palette
+   without adding a variable every theme would then have to define. */
+.claim-bar { margin: .6rem 0 0; }
+.claim-bar-track { display: block; width: 100%; height: .5rem; margin: 0; border: none; border-radius: 999px; background: var(--line); -webkit-appearance: none; appearance: none; }
+.claim-bar-track::-webkit-progress-bar { background: var(--line); border-radius: 999px; }
+.claim-bar-track::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
+.claim-bar-track::-moz-progress-bar { background: var(--accent); border-radius: 999px; }
+.claim-bar-text { margin: .3rem 0 0; color: var(--muted); }
+
 .items { list-style: none; padding: 0; margin: 0; }
 
 .item { display: flex; flex-direction: column; gap: .6rem; }

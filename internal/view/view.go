@@ -107,6 +107,65 @@ type ListPage struct {
 	Sort model.ItemSort
 }
 
+// Progress is the claimed-vs-total summary of a list, as a non-owning viewer is
+// allowed to see it. It answers the one question a buyer opens a list with —
+// how much of this is still mine to buy — and it is the reason plan §3.2 lists
+// "any 'N remaining' / 'N of M claimed' counter" as a leak vector: the same
+// number shown to the owner would tell them how many gifts are on the way.
+type Progress struct {
+	Items     int
+	Claimed   int
+	Available int
+	Percent   int
+}
+
+// ProgressFrom converts the store's aggregate into the render-ready form, and
+// returns nil for a list with nothing on it — a nil Progress draws nothing,
+// which is what an empty list should look like rather than a 0% bar.
+func ProgressFrom(p *store.ListProgress) *Progress {
+	if p == nil || p.Items == 0 {
+		return nil
+	}
+	return &Progress{
+		Items:     p.Items,
+		Claimed:   p.Claimed,
+		Available: p.Available(),
+		Percent:   p.Percent(),
+	}
+}
+
+// Progress summarizes how much of this list is already taken care of.
+//
+// It is computed from ViewerItems, which costs no extra query and, more to the
+// point, is empty on an owner's page — so an owner's page physically cannot
+// produce a summary, for the same reason an owner's card cannot draw a bar. The
+// IsOwner check below is belt to that braces.
+func (p *ListPage) Progress() *Progress {
+	if p.IsOwner || len(p.ViewerItems) == 0 {
+		return nil
+	}
+	out := &Progress{}
+	for _, it := range p.ViewerItems {
+		// A removed item is still shown to the viewer who had claimed it
+		// (plan §3.4), but it is no longer on the list. Counting it here would
+		// leave the list page and the dashboard card — which counts live items
+		// only — disagreeing about the same list.
+		if it.Removed {
+			continue
+		}
+		out.Items++
+		if it.ClaimedQty >= it.Quantity {
+			out.Claimed++
+		}
+	}
+	if out.Items == 0 {
+		return nil
+	}
+	out.Available = out.Items - out.Claimed
+	out.Percent = out.Claimed * 100 / out.Items
+	return out
+}
+
 // BuildListPage assembles the list view for one viewer, in the order they asked
 // for.
 func (b *Builder) BuildListPage(ctx context.Context, list *model.List, viewer *model.User,

@@ -202,6 +202,89 @@ func TestClaimReadsFailClosedForOwner(t *testing.T) {
 	}
 }
 
+// ProgressForLists is the claimed-vs-total aggregate behind the bar on a
+// buyer's dashboard. Plan §3.2 lists that counter as a leak vector of its own,
+// so it fails closed the same way every other claim read does.
+func TestProgressForListsFailsClosedForOwner(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+
+	owner := mustUser(t, st, "owner")
+	other := mustUser(t, st, "other")
+	mine := mustList(t, st, owner, model.VisibilityAllUsers)
+	theirs := mustList(t, st, other, model.VisibilityAllUsers)
+	mustItem(t, st, mine, 1)
+
+	if _, err := st.ProgressForLists(ctx, []string{mine.ID}, owner.ID); !errors.Is(err, model.ErrOwnerBlind) {
+		t.Errorf("own list: got %v, want ErrOwnerBlind", err)
+	}
+	// One of the viewer's own lists in the batch fails the whole call. Returning
+	// the other rows and quietly dropping that one would answer a question the
+	// caller should not have asked, which is how a zero ends up rendered as a bar.
+	if _, err := st.ProgressForLists(ctx, []string{theirs.ID, mine.ID}, owner.ID); !errors.Is(err, model.ErrOwnerBlind) {
+		t.Errorf("mixed batch: got %v, want ErrOwnerBlind", err)
+	}
+}
+
+func TestProgressForListsCountsItemsNotUnits(t *testing.T) {
+	ctx := context.Background()
+	st := newStore(t)
+
+	owner := mustUser(t, st, "owner")
+	buyer := mustUser(t, st, "buyer")
+	list := mustList(t, st, owner, model.VisibilityAllUsers)
+	empty := mustList(t, st, owner, model.VisibilityAllUsers)
+
+	full := mustItem(t, st, list, 1)    // claimed outright
+	partial := mustItem(t, st, list, 3) // one of three claimed
+	removed := mustItem(t, st, list, 1)
+	mustItem(t, st, list, 1) // untouched
+
+	if _, err := st.CreateClaim(ctx, full.ID, buyer.ID, 1, nil); err != nil {
+		t.Fatalf("claim full: %v", err)
+	}
+	if _, err := st.CreateClaim(ctx, partial.ID, buyer.ID, 1, nil); err != nil {
+		t.Fatalf("claim partial: %v", err)
+	}
+	if err := st.DeleteItem(ctx, removed.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+
+	got, err := st.ProgressForLists(ctx, []string{list.ID, empty.ID}, buyer.ID)
+	if err != nil {
+		t.Fatalf("ProgressForLists: %v", err)
+	}
+
+	p := got[list.ID]
+	if p == nil {
+		t.Fatal("no progress for the list")
+	}
+	// Three live items: the removed one is gone, and the partially claimed one is
+	// still there to buy. Counting units instead would read 2 of 6.
+	if p.Items != 3 {
+		t.Errorf("Items = %d, want 3 (the soft-deleted item must not count)", p.Items)
+	}
+	if p.Claimed != 1 {
+		t.Errorf("Claimed = %d, want 1 (an item with units left is not claimed)", p.Claimed)
+	}
+	if p.Available() != 2 {
+		t.Errorf("Available() = %d, want 2", p.Available())
+	}
+	if p.Percent() != 33 {
+		t.Errorf("Percent() = %d, want 33", p.Percent())
+	}
+
+	// A list with nothing on it comes back as zeroes rather than missing, so a
+	// caller indexing the map does not have to nil-check every entry.
+	e := got[empty.ID]
+	if e == nil {
+		t.Fatal("empty list is missing from the result")
+	}
+	if e.Items != 0 || e.Claimed != 0 || e.Percent() != 0 {
+		t.Errorf("empty list = %+v, want zeroes", e)
+	}
+}
+
 // TestQuantityReductionBlockedByClaims covers plan §3.4.
 func TestQuantityReductionBlockedByClaims(t *testing.T) {
 	ctx := context.Background()

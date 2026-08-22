@@ -76,12 +76,31 @@ templ Account(p Page, mustReset bool, errMsg, okMsg string) {
 			<div class="flash flash-ok">{ okMsg }</div>
 		}
 		<section class="card">
-			<h2>Your name</h2>
+			<h2>Your names</h2>
 			<form method="post" action="/account/profile" class="stack">
 				<input type="hidden" name="csrf_token" value={ p.CSRF }/>
 				<label>
 					Display name
 					<input type="text" name="display_name" value={ p.DisplayName() } required maxlength="80"/>
+					<span class="hint">What your family sees next to your lists and your claims.</span>
+				</label>
+				<label>
+					Sign-in name
+					<input
+						type="text"
+						name="username"
+						value={ p.Username() }
+						required
+						minlength="2"
+						maxlength="40"
+						autocomplete="username"
+						autocapitalize="none"
+						spellcheck="false"
+					/>
+					<span class="hint">
+						What you type to sign in. Changing it takes effect immediately and does not
+						sign you out — but use the new one next time.
+					</span>
 				</label>
 				<button type="submit">Save</button>
 			</form>

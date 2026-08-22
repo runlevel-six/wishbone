@@ -24,6 +24,11 @@ func claimCanaries(h *harness) map[string]string {
 		"Release":                "claim release control",
 		"I&rsquo;ll get this":    "claim button",
 		"cannot see any of this": "the claim list footnote",
+		// The claimed-vs-total bar. The markup is the canary rather than any of
+		// its wording, because the wording has three forms and a fourth would
+		// arrive without anyone thinking to add it here.
+		"claim-bar":       "the claimed-vs-total bar",
+		"still available": "the claimed-vs-total counter",
 	}
 	for k, v := range claimDataCanaries(h) {
 		c[k] = v

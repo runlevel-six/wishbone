@@ -17,6 +17,22 @@ const MaxPageBytes = 2 << 20 // 2 MiB
 // ErrDisabled is returned when URL fetching is switched off by configuration.
 var ErrDisabled = errors.New("extract: URL fetching is disabled")
 
+// ErrNotAProductPage is returned for an address that cannot name a product —
+// a search results page, a listing, a cart. Match it with errors.Is; the
+// concrete NotAProductError carries which shape it was.
+var ErrNotAProductPage = errors.New("extract: not a product page")
+
+// NotAProductError reports an address that was recognized as something other
+// than a product page before any request was made.
+type NotAProductError struct{ Shape PageShape }
+
+func (e *NotAProductError) Error() string {
+	return "extract: " + string(e.Shape) + " page, not a product page"
+}
+
+// Is makes errors.Is(err, ErrNotAProductPage) true for every shape.
+func (e *NotAProductError) Is(target error) bool { return target == ErrNotAProductPage }
+
 // Service is the whole pipeline: normalize, fetch, parse the head, run the
 // chain, apply the soft-404 guard.
 type Service struct {
@@ -92,6 +108,13 @@ func (s *Service) Fetch(ctx context.Context, rawURL string) (*Preview, error) {
 	normalized, err := NormalizeURL(rawURL)
 	if err != nil {
 		return nil, err
+	}
+	// Before the request, not after: a listing answers 200 with a page full of
+	// products and the tiers would pick one of them, or none, and either way the
+	// person learns nothing about what went wrong. Refusing here costs no
+	// round-trip and lets the form say the one useful thing.
+	if shape := ClassifyNonProduct(normalized); shape != "" {
+		return nil, &NotAProductError{Shape: shape}
 	}
 
 	got, err := s.fetchOnce(ctx, normalized)
