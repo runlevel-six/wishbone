@@ -1,6 +1,6 @@
 {
   "name": "wishbone-extractor",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "HTTP shim over get-product-name for wishbone's extractor chain (tier 5)",
   "main": "server.js",

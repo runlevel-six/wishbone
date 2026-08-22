@@ -5,7 +5,15 @@ name: CI
 on:
   push:
     branches: [master]
+    # Release tags, without which the publish job below cannot fire: with only
+    # `branches` listed, a tag push does not start this workflow at all, so every
+    # `ref_type == 'tag'` condition in it would be unreachable — a failure mode
+    # with no symptom, because the workflow that did not run reports nothing.
+    tags: ['v[0-9]*']
   pull_request:
+  # So a tag that already existed when publishing was added can still be
+  # published, without moving or re-signing it. Dispatch from the tag.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -102,7 +110,156 @@ jobs:
 
       # What actually ships is a container, not a binary — there is no
       # goreleaser here. A Dockerfile can break while every test passes: a
-      # missing COPY, CGO creeping back in, a base image that moved. Built and
-      # not pushed; publishing is a deliberate act, not a side effect of green.
+      # missing COPY, CGO creeping back in, a base image that moved.
+      #
+      # This job builds and does not push. Publishing is the `publish` job below,
+      # which builds again — deliberately, so that publishing is never the first
+      # thing to discover a broken Dockerfile, and so a pull request gets the same
+      # check without any credentials in scope.
       - name: Build the image
         run: make image
+
+  publish:
+    name: Publish image
+    runs-on: ubuntu-latest
+    # Only once everything that could call the build broken has declined to.
+    # An image that fails its own tests is worse than no image: it looks
+    # deployable.
+    needs: [build, lint, image]
+    # Not on pull requests, which must never hold a token that can write
+    # packages. `workflow_dispatch` is included so an existing tag can be
+    # published without moving it.
+    if: github.event_name != 'pull_request'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Tags and full history: the version is `git describe`, and a shallow
+          # clone has neither. Without this an edge build reports a bare commit
+          # and a release build cannot confirm it is on the tag it claims.
+          fetch-depth: 0
+
+      # One rule for both kinds of build rather than a conditional: on a tag this
+      # is exactly the tag (`v0.8.0`), and on master it is the last release plus
+      # how far past it we are (`v0.8.0-4-gfccf5ba`). The same command the
+      # Makefile uses, so a locally built binary and CI's agree on what a version
+      # looks like.
+      #
+      # `--dirty` is deliberately absent, unlike the Makefile's: a CI checkout is
+      # clean by construction, and a `-dirty` suffix here would mean something had
+      # gone wrong that this is not the place to paper over.
+      - name: Derive the version
+        id: version
+        run: |
+          version=$(git describe --tags --match 'v[0-9]*' --always)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # A release is published once. Re-pushing a moved tag would replace the
+      # bytes behind a version somebody has already deployed, which is the one
+      # thing that makes a version number worthless — so it is refused here
+      # rather than discovered later.
+      #
+      # After the login, deliberately: an unauthenticated manifest inspect of a
+      # private package answers "unauthorized", which this would have read as
+      # "not published yet" and waved through.
+      - name: Refuse to republish an existing release
+        if: github.ref_type == 'tag'
+        run: |
+          if docker manifest inspect "ghcr.io/${{ github.repository }}:${{ github.ref_name }}" >/dev/null 2>&1; then
+            echo "::error::ghcr.io/${{ github.repository }}:${{ github.ref_name }} already exists." \
+                 "Releases are never republished — cut the next version instead."
+            exit 1
+          fi
+          echo "${{ github.ref_name }} has not been published before."
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # `latest` is spelled out below rather than left to the action's "auto"
+          # flavor, which is one more thing to go and look up.
+          flavor: latest=false
+          # What each tag promises:
+          #
+          #   v0.8.0   the release. Identical to the git tag and to what
+          #            `wishbone version` reports, so one string identifies a
+          #            release in git, in the registry, in the Deployment, and in
+          #            a log line.
+          #   latest   the newest release, and only ever a release — never the
+          #            branch, so a pod restart can never pull something nobody
+          #            chose. Deployments pin a version; this is for a person
+          #            trying it out.
+          #   edge     the tip of master, named so nobody mistakes it for a
+          #            release.
+          #   sha-...  every build, immutable, for bisecting.
+          #
+          # No moving `0.8` or `0` aliases. While the major version is 0 a minor
+          # bump is allowed to break things, so `:0` would be a promise this
+          # cannot keep.
+          tags: |
+            type=raw,value=${{ github.ref_name }},enable=${{ github.ref_type == 'tag' }}
+            type=raw,value=latest,enable=${{ github.ref_type == 'tag' && !contains(github.ref_name, '-') }}
+            type=raw,value=edge,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # The one build arg the Dockerfile takes. It has to be passed, because
+          # .dockerignore excludes .git and so `git describe` cannot run inside
+          # the build — the default is `dev`, and a missing arg here would ship a
+          # build that calls itself that. The next step is what notices.
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
+          # No attestation manifest: it makes the tag point at an index rather
+          # than an image, which some older pull paths handle badly for no
+          # benefit here.
+          provenance: false
+
+      # The binary has to agree with the tag it was published under. This is the
+      # cross-check that did not exist before: the version reaches the image only
+      # through a build arg, so a mistake there shipped a mislabeled build in
+      # silence, and stayed invisible until somebody asked a running pod what it
+      # was and got `dev`.
+      - name: Verify the image reports its own version
+        if: github.ref_type == 'tag'
+        run: |
+          image="ghcr.io/${{ github.repository }}:${{ github.ref_name }}"
+          reported=$(docker run --rm "$image" version)
+          echo "reported: $reported"
+          if [ "$reported" != "${{ github.ref_name }}" ]; then
+            echo "::error::$image reports '$reported', not the tag ${{ github.ref_name }}."
+            exit 1
+          fi
+
+      # Printed for both kinds of build, so a running pod can be traced back to
+      # exact bytes without going digging in the registry.
+      - name: Report what was published
+        run: |
+          {
+            echo "### Published \`${{ steps.version.outputs.version }}\`"
+            echo
+            echo 'Tags:'
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo 'Digest — pin this for exact bytes:'
+            echo '```'
+            echo 'ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,122 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Extractor image
+
+# The extraction sidecar is a separate image with its own life. It is a thin
+# Node shim over a third-party library (deploy/sidecar/wrapper), it changes
+# roughly never, and it has nothing to do with a wishbone release — so it is not
+# built by the release workflow. Republishing it under every application tag
+# would put a new version number on bytes nobody changed.
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'deploy/sidecar/wrapper/**'
+      - '.github/workflows/extractor.yaml'
+  pull_request:
+    paths:
+      - 'deploy/sidecar/wrapper/**'
+      - '.github/workflows/extractor.yaml'
+  # For the first publish, and for rebuilding on a dependency advisory without
+  # having to touch a file to trigger it.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: extractor-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # The version comes out of package.json rather than a workflow input or a
+      # git tag: it is already the one place this image's version is written
+      # down, it is visible in a diff, and it cannot drift from what the image
+      # actually contains. Bumping it is how a release is cut; the republish
+      # guard below is what makes forgetting to bump it an error rather than an
+      # overwrite.
+      - name: Read the version
+        id: version
+        working-directory: deploy/sidecar/wrapper
+        run: |
+          version=$(jq -re .version package.json)
+          echo "version=v${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: v${version}"
+
+      - name: Build it
+        working-directory: deploy/sidecar/wrapper
+        run: docker build -t extractor:ci .
+
+      # A pull request stops here: it has proven the image builds, and it must
+      # never hold a token that can write packages.
+      - name: Log in
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Same rule as the application image: a version is published once. This
+      # one carries more weight here than it does there, because the build is
+      # not reproducible — see the note on the lockfile below — so the same
+      # version number rebuilt is genuinely different bytes rather than the same
+      # bytes arrived at twice.
+      - name: Refuse to republish an existing version
+        if: github.event_name != 'pull_request'
+        run: |
+          image="ghcr.io/${{ github.repository }}-extractor:${{ steps.version.outputs.version }}"
+          if docker manifest inspect "$image" >/dev/null 2>&1; then
+            echo "::error::$image already exists. Bump the version in" \
+                 "deploy/sidecar/wrapper/package.json instead of republishing it."
+            exit 1
+          fi
+          echo "${{ steps.version.outputs.version }} has not been published before."
+
+      - id: meta
+        if: github.event_name != 'pull_request'
+        uses: docker/metadata-action@v5
+        with:
+          # ghcr.io/<owner>/wishbone-extractor, derived rather than written out,
+          # so a repository rename cannot leave this pointing at the old name.
+          images: ghcr.io/${{ github.repository }}-extractor
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+
+      - id: build
+        if: github.event_name != 'pull_request'
+        uses: docker/build-push-action@v6
+        with:
+          context: deploy/sidecar/wrapper
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          provenance: false
+
+      - name: Report what was published
+        if: github.event_name != 'pull_request'
+        run: |
+          {
+            echo "### Published \`${{ steps.version.outputs.version }}\`"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo 'Digest — pin this for exact bytes:'
+            echo '```'
+            echo 'ghcr.io/${{ github.repository }}-extractor@${{ steps.build.outputs.digest }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

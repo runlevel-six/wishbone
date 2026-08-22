@@ -36,13 +36,23 @@ tiers cannot read.
 It is opt-in: the default manifests do not include it, because it needs a
 second image built and pushed first.
 
-1. Build it:
+1. Get the image. CI publishes it as `ghcr.io/<owner>/wishbone-extractor`,
+   versioned from `deploy/sidecar/wrapper/package.json` and built whenever
+   anything in that directory changes — so for this repository's own releases
+   there is nothing to build.
+
+   To build it yourself, for a fork or your own registry:
 
    ```sh
    cd deploy/sidecar/wrapper
    docker build -t your-registry/wishbone-extractor:v1 .
    docker push your-registry/wishbone-extractor:v1
    ```
+
+   Note that the wrapper has no lockfile and depends on a `^` range, so two
+   builds of the same source can differ. That is why its version is bumped
+   rather than reused, and why the publish job refuses to overwrite a version
+   that already exists.
 
 2. Set the image in `deploy/k8s/extractor-sidecar.yaml`, then uncomment the
    `patches` entry in `kustomization.yaml`. That patch adds both the container

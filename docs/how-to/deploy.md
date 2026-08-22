@@ -18,6 +18,23 @@ You need:
 
 ## 1. Build and push the image
 
+**If you are deploying this repository's own releases, skip this step.** CI
+publishes on every `v*` tag, and you can pull what it published:
+
+```
+ghcr.io/<owner>/wishbone:v1          the release
+ghcr.io/<owner>/wishbone:latest      the newest release, never the branch
+ghcr.io/<owner>/wishbone:edge        the tip of master
+ghcr.io/<owner>/wishbone:sha-<sha>   every build, immutable
+```
+
+The release job refuses to republish a tag that already exists, and checks that
+the built binary reports the tag it was published under — so a version in a
+running pod is the version in git.
+
+Build it yourself when you are deploying a fork, or pushing to a registry of
+your own:
+
 ```sh
 make image IMAGE=your-registry/wishbone:v1
 docker push your-registry/wishbone:v1
@@ -25,7 +42,9 @@ docker push your-registry/wishbone:v1
 
 The image is a static binary on `scratch`: no shell, no package manager,
 nothing to patch. Building it needs no local Go toolchain — the Dockerfile does
-that in its build stage.
+that in its build stage. Pass `VERSION` if you build outside a git checkout:
+`.dockerignore` excludes `.git`, so `git describe` cannot run in the build
+stage, and the default is `dev`.
 
 ## 2. Create the secret
 
