@@ -57,8 +57,14 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				<strong>That shop would not let Wishbone read the page.</strong>
 				It answered { itoa(f.BlockedStatus) } — a refusal aimed at anything that is not
 				a person with a browser. Your link is fine and is saved as it is; the details
-				are the part you have to fill in. Copying the name and price across from the
-				tab you already have open is the fastest way.
+				are the part you have to fill in.
+				if f.TitleGuessed {
+					The name below was read out of the link, so the price is the one thing
+					really missing — copy it from the tab you already have open.
+				} else {
+					Copying the name and price across from the tab you already have open is the
+					fastest way.
+				}
 				<a href="/help#shop-refused">More about this</a>.
 			</div>
 		}
@@ -167,6 +173,13 @@ templ ItemFormBody(p Page, f ItemFormData) {
 			// are worth checking.
 			<input type="text" name="title" value={ f.Title } required maxlength="200"
 				autofocus?={ f.ItemID != "" || !f.FetchEnabled || f.Extracted }/>
+			if f.TitleGuessed {
+				<span class="hint">
+					Read out of the link itself, because the page could not be read — so it is a
+					guess, and it is yours to correct. Shops write the name into the address, which
+					is why this is usually close and sometimes missing its punctuation.
+				</span>
+			}
 			if f.Errors["title"] != "" {
 				<span class="error">{ f.Errors["title"] }</span>
 			}

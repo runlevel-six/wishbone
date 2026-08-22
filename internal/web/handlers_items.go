@@ -156,6 +156,7 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 			slog.String("url", raw),
 			slog.Any("err", err))
 		f.FetchError = friendlyFetchError(err)
+		suggestTitleFromAddress(&f)
 		s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
 		return
 	}
@@ -210,10 +211,36 @@ func (s *Server) handlePreviewItem(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	suggestTitleFromAddress(&f)
+
 	if dups, err := s.st.DuplicateItems(ctx, f.URL, u.ID, ""); err == nil {
 		f.Duplicates = s.duplicateWarnings(ctx, dups)
 	}
 	s.render(w, r, http.StatusOK, templates.ItemFormBody(s.page(w, r, ""), f))
+}
+
+// suggestTitleFromAddress fills the name in from the address when nothing could
+// read the page, and marks it as a guess.
+//
+// Deliberately not offered in two cases. A suspect result already shows what the
+// page said and offers it behind one button, and a second, worse candidate
+// beside it would only make that choice harder. A listing has no product name to
+// find — its slug is somebody's search terms — and it never reaches here, because
+// the classifier refuses those addresses before the fetch.
+func suggestTitleFromAddress(f *templates.ItemFormData) {
+	if f.Title != "" || f.Suspect {
+		return
+	}
+	guess := extract.TitleFromURL(f.URL)
+	if guess == "" {
+		return
+	}
+	f.Title = guess
+	f.TitleGuessed = true
+	if f.Sources == nil {
+		f.Sources = map[string]string{}
+	}
+	f.Sources["title"] = extract.SourceURLSlug
 }
 
 // handleAcceptSuspectPreview applies an extraction the soft-404 guard held

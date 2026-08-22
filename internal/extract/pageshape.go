@@ -14,10 +14,10 @@ import (
 // like a lookup that failed on a good link, so the natural response is to try
 // again, which cannot work either.
 //
-// The production log is what prompted this. A brand listing was pasted three
-// times in seven minutes, and a search address once with the typed search terms
-// still misspelled in the path. Nothing was ever going to come back from
-// either, and nothing told the person why.
+// The production log is what prompted this: a brand listing pasted three times
+// in seven minutes, and a search address whose own path still held the terms
+// somebody had typed into the shop. Nothing was ever going to come back from
+// either, and nothing told the person why — so they tried again.
 //
 // Detection is deliberately host-keyed rather than clever. A generic rule for a
 // one-letter segment like "s" or "b" would fire on real product addresses
@@ -64,9 +64,9 @@ var universalSegments = map[string]PageShape{
 // for listings. These are short enough to mean something else elsewhere, which
 // is exactly why they are scoped to the host that defines them.
 //
-// A product segment is never listed. That is the point of the table: the
-// home-improvement chain serves products from "/p/<slug>/<id>", so "p" is
-// absent and a product address falls straight through.
+// A product segment is never listed, and that is the point of the table. Each
+// host below serves its products from some other path, so a product address
+// finds no entry here and falls straight through to an ordinary lookup.
 var siteSegments = map[string]map[string]PageShape{
 	"homedepot.com": {
 		"s": ShapeSearch,   // /s/<terms>
@@ -132,12 +132,25 @@ func ClassifyNonProduct(raw string) PageShape {
 	return rules[segs[0]]
 }
 
-// pathSegments splits a URL path into its non-empty, lowercased segments.
+// pathSegments splits a URL path into its non-empty, lowercased segments, for
+// matching against the tables above.
 func pathSegments(p string) []string {
+	out := rawPathSegments(p)
+	for i, s := range out {
+		out[i] = strings.ToLower(s)
+	}
+	return out
+}
+
+// rawPathSegments is pathSegments with the case left alone, for callers reading
+// a segment as words rather than matching it against a table — a shop writes
+// "SOMEBRAND-ATOMIC-20V" and lowercasing that loses information no rule can
+// restore.
+func rawPathSegments(p string) []string {
 	var out []string
 	for _, s := range strings.Split(p, "/") {
 		if s != "" {
-			out = append(out, strings.ToLower(s))
+			out = append(out, s)
 		}
 	}
 	return out

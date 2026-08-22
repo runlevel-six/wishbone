@@ -70,20 +70,60 @@ work.
   something else entirely elsewhere — `/s/some-product` is a perfectly good
   product path on a shop that has never heard of the convention.
 
-A product segment is never in the table; that is what makes the table safe. The
-home-improvement chain serves products from `/p/{slug}/{id}`, so `p` is absent
-and a product address falls straight through. A wrong "that is not a product" is
+A product segment is never in the table, and that is what makes the table safe:
+every host in it serves products from some other path, so a product address
+finds no entry and falls straight through. A wrong "that is not a product" is
 worse than the blank form it replaces, because it tells somebody their good link
 is bad — so an unknown host always falls through to an ordinary lookup.
 
 **Where the cases came from.** The production log, not invention. Over two days
-one family member pasted a brand listing three times in seven minutes and a
-search address once with the typed terms still misspelled in the path
-(`/s/Ryobi%20cordless%201gallon%20rank%20sprayer%20woth%20replacement%20tank`).
-Four of the seven failed lookups in that window were addresses that could never
-have worked. `TestClassifyNonProductRecognizesListings` is built from those
-addresses; `TestClassifyNonProductLetsProductsThrough` is the other half and is
-the more important of the two.
+a brand listing was pasted three times in seven minutes, and a search address
+whose own path still held the terms somebody had typed into the shop. Four of
+the seven failed lookups in that window were addresses that could never have
+worked. `TestClassifyNonProductRecognizesListings` is built from their shapes;
+`TestClassifyNonProductLetsProductsThrough` is the other half, and is the more
+important of the two.
+
+## A title out of the address
+
+`extract.TitleFromURL` recovers a likely product name from the address itself,
+for the pages nothing can read. It runs only when the form would otherwise have
+no title at all, and it supplies nothing else — above all not a price.
+
+```
+/p/SOMEBRAND-Cordless-1-2-in-Ratchet-Tool-Only-ABC123B/318631225
+  → SOMEBRAND Cordless 1 2 in Ratchet Tool Only ABC123B
+```
+
+It takes the **longest name-like segment** of the path, rather than a per-host
+rule about which position holds it: shops disagree about the position and agree
+that the slug is the longest thing there, because it is prose and the rest are
+identifiers. A segment qualifies only if it is hyphenated, contains nothing but
+letters, digits and light punctuation, and holds **at least two words with a run
+of three or more letters**. That last rule is what rejects hex — a UUID or an id
+like `a1b2c3d4-e5f6` passes any letter-count ratio and reads as gibberish, but
+its letters are always separated by digits, while real words are nothing but
+runs.
+
+Recorded in `items.field_sources` as `url`, so it is visibly not the owner's own
+typing and a later re-scrape is free to replace it.
+
+Two deliberate omissions:
+
+- **No punctuation is invented in numbers.** `1-2-in` is a fraction and
+  `2-0-Ah` is a decimal, and the slug does not say which. Both occur in real
+  addresses. A reader fixes "1 2 in" in a second because it is visibly
+  unfinished; a confident "2/0 Ah" is the quietly-wrong detail this project
+  refuses to produce anywhere else.
+- **Not offered on a suspect result**, which already shows what the page said
+  behind one button. A second, worse candidate beside it only makes that choice
+  harder.
+
+The form fills the field in and says underneath that it is a guess read out of
+the link. That is the one case where a value is applied without having been
+read from a page, and it is safe for a reason worth stating: it is a restatement
+of the address the person just pasted and is looking at, not a claim about the
+product.
 
 ## Chain tiers
 
@@ -455,9 +495,10 @@ changes it.
 
 ### A retailer that refuses everything
 
-Measured 2026-08-22, on the home-improvement chain whose 403s dominate the
-production log. Recorded here so it is not re-diagnosed: **there is no lookup
-path for these product pages**, and the answer is the manual form.
+Measured 2026-08-22, against the retailer whose 403s dominate the production
+log, and confirmed since on a second one. Recorded here so it is not
+re-diagnosed: **some shops have no lookup path at all**, and the answer is the
+manual form.
 
 Every one of these was tried against the same product address:
 
@@ -471,7 +512,7 @@ Every one of these was tried against the same product address:
 | `curl` with the full Chrome header set (client hints, `Sec-Fetch-*`, HTTP/2) | 403 |
 | `facebookexternalhit`, `Twitterbot`, `Slackbot`, `WhatsApp`, `Discordbot` | 403, 476 bytes |
 | `Googlebot` | 403, 476 bytes |
-| `/p/svcs/frontEndModel/{id}`, `/p/{id}` | 403 |
+| A legacy internal JSON endpoint, and the bare product id | 403 |
 
 Three things worth taking from the table:
 

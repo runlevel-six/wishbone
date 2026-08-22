@@ -213,10 +213,14 @@ type ItemFormData struct {
 	// the same fact phrased for a person to read.
 	NotProduct      string
 	NotProductLabel string
-	Sources         map[string]string
-	FetchError      string
-	Duplicates      []DuplicateWarning
-	FetchEnabled    bool
+	// TitleGuessed marks a title taken from the address rather than the page,
+	// because nothing could read the page. It is filled in, and the form says so:
+	// a guess presented as a fact is the thing this project does not do.
+	TitleGuessed bool
+	Sources      map[string]string
+	FetchError   string
+	Duplicates   []DuplicateWarning
+	FetchEnabled bool
 	// AutoLookup runs the link lookup as soon as the page loads, for links
 	// arriving from a phone's share sheet.
 	AutoLookup bool

@@ -33,6 +33,11 @@ const (
 	SourceMicrodata = "microdata"
 	SourceOG        = "og"
 	SourceSidecar   = "sidecar"
+	// SourceURLSlug is the address itself, not the page. It only ever provides a
+	// title, and only when nothing read the page — recorded so a later re-scrape
+	// knows this was a guess and is free to replace it, which it would not be if
+	// the field looked like the owner's own typing.
+	SourceURLSlug = "url"
 )
 
 // Result is the merged output of the whole chain.
