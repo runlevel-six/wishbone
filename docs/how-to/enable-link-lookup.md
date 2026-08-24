@@ -107,6 +107,16 @@ If that turns a 403 into a 200, set `WISHBONE_FETCH_IMPERSONATE=chrome` in your
 deployment. If it does not, the retailer is running a JS challenge and no
 setting here reaches it.
 
+Run it against `/robots.txt` as well as the product page before concluding
+anything about an address. A site refusing both under Go's handshake and serving
+`robots.txt` under Chrome's is inspecting the handshake, not blocking you; `curl`
+cannot tell you this, because its own handshake gets refused too. Note that this
+project's deployment does set `chrome`, for one retailer and after that check —
+[the reasoning is
+recorded](../reference/extraction.md#the-decision-once-taken-belongs-in-writing),
+because a setting like this one going unwritten is how it gets inherited by
+somebody who does not know it is there.
+
 Timeouts and size caps for page fetches are fixed in code, not configurable:
 5s total, 2s to connect, 2 MiB per page, 5 MiB per image.
 

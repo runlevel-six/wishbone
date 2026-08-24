@@ -105,6 +105,11 @@ like `a1b2c3d4-e5f6` passes any letter-count ratio and reads as gibberish, but
 its letters are always separated by digits, while real words are nothing but
 runs.
 
+A trailing page extension is dropped first — two to five letters after the final
+dot, which is every extension a storefront serves pages under (`.html`, `.jsp`,
+`.aspx`) and nothing else. The bounds keep it from eating a decimal that belongs
+to the name, like `7.0-cu-ft`.
+
 Recorded in `items.field_sources` as `url`, so it is visibly not the owner's own
 typing and a later re-scrape is free to replace it.
 
@@ -409,12 +414,61 @@ with a commercial bot-detection service which scores behavior over time and not
 only the handshake, so a cold request succeeding is not a promise that a
 regular polling job would.
 
+### Where the handshake stops being enough
+
+A second department store — Akamai Bot Manager, not the chain above — refuses
+the Chrome ClientHello too, and the measurement is worth keeping so nobody
+repeats it:
+
+| Request, from the cluster's own egress | Result |
+|---|---|
+| `/robots.txt`, Go handshake | `403` |
+| `/robots.txt`, Chrome handshake | `200` |
+| A product page, Chrome handshake | `403` |
+| The same page, Chrome handshake, replayed with all 31 cookies the site had just set | `403` |
+
+The first two rows are the useful pair. They rule out the explanation that
+looks obvious from a shell — a site that will not serve its own `robots.txt`
+looks like an address block, and it is not one. `curl` gets `403` there for the
+same reason Go does, which makes `curl` the wrong instrument for this question
+and `check-url -impersonate` the right one.
+
+So the handshake gate is passed and a second gate is behind it. The product page
+answers with `_abck`, the Bot Manager cookie that is only validated by the
+telemetry its JavaScript sensor posts back. Nothing that does not run the page's
+JavaScript can hold a valid one, which is why the cookie replay changes nothing
+and why no header or fingerprint work reaches this. The escalation that would is
+the headless browser, declined on its own merits in
+[extraction trade-offs](../explanation/extraction-trade-offs.md).
+
+This is the case the slug title guess exists for, and on this retailer it is the
+whole result: the address carries the product name, so the name arrives filled
+in and labeled a guess, and the price is left for the owner.
+
 It is **off by default**, and deliberately:
 
 - It is an arms race. Fingerprints drift with Chrome's releases, so this needs
   attention the rest of the fetcher does not, and it will break at some point
   without warning.
 - A family wishlist that types one item in by hand is not much worse off.
+
+### The decision, once taken, belongs in writing
+
+Off by default is the default, not a prediction. It is **on in this project's own
+deployment**, turned on for the one retailer measured above whose handshake check
+it clears — a shop family members were pasting links from often enough to be
+worth the maintenance.
+
+Recording that here is the point of this section. The variable is set in a
+deployment overlay that is not in this tree, so nothing a reader can see says the
+arms race above is one this deployment has entered. That is the failure the
+bullets warn about: the fingerprint drifts with a Chrome release, lookups start
+failing on a shop that used to work, and the cost lands on somebody who has no
+way to know a trade-off was ever made. The bullets are the argument; this is the
+answer, and it needs re-deciding whenever it stops being true.
+
+The check that justified it, and the check that would retire it, are the same
+two commands — see the bottom of this section.
 
 What it does *not* change is the address guard. Connections are still made by
 the same `net.Dialer` with the same `Control` hook, so the SSRF protection sees

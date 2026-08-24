@@ -70,8 +70,7 @@ func TitleFromURL(raw string) string {
 
 // nameLikeSegment returns the segment if it reads like a product name, or "".
 func nameLikeSegment(seg string) string {
-	seg = strings.TrimSuffix(seg, ".html")
-	seg = strings.TrimSuffix(seg, ".htm")
+	seg = trimPageExtension(seg)
 	// Generous: a real slug is nowhere near this, and over-long input is
 	// truncated to the form's limit by the caller rather than discarded.
 	if seg == "" || len(seg) > 512 {
@@ -116,6 +115,39 @@ func nameLikeSegment(seg string) string {
 		return ""
 	}
 	return seg
+}
+
+// trimPageExtension drops the file extension a storefront serves its pages
+// under, which is never part of the name anybody wrote.
+//
+// A list of the ones seen so far was the first version, and it was wrong the
+// first time a shop used a fifth one: a department store serving
+// `.../unisex-red-scenic-comfort-colors-t-shirt.jsp` — a page nothing can read,
+// so the guess is all the person gets — offered "... t shirt.jsp" as the name.
+// Shops disagree about the extension and there is no reason to think the list
+// is finished.
+//
+// Letters only, two to five of them, which is every server-page extension there
+// is and nothing else. The bound at each end is doing work: it declines to eat a
+// decimal that belongs to the name, like `size-8.5` or `2.0-cu-ft`, and it
+// declines to eat a whole trailing word, like `crib.convertible`.
+func trimPageExtension(seg string) string {
+	i := strings.LastIndexByte(seg, '.')
+	if i <= 0 {
+		return seg
+	}
+	ext := seg[i+1:]
+	if len(ext) < 2 || len(ext) > 5 {
+		return seg
+	}
+	for _, r := range ext {
+		// ASCII: an extension is machinery, and a segment ending in a
+		// non-ASCII letter after a dot is part of somebody's name.
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return seg
+		}
+	}
+	return seg[:i]
 }
 
 // longestLetterRun returns the length of the longest run of consecutive letters.

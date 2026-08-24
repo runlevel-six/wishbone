@@ -35,6 +35,16 @@ func TestTitleFromURLReadsTheNameOutOfTheAddress(t *testing.T) {
 			want: "wool winter scarf",
 		},
 		{
+			name: "jsp suffix is dropped, like every other page extension",
+			url:  "https://shop.example.com/product/prd-7197508/unisex-red-scenic-comfort-colors-t-shirt.jsp",
+			want: "unisex red scenic comfort colors t shirt",
+		},
+		{
+			name: "a decimal that belongs to the name is not an extension",
+			url:  "https://shop.example.com/products/chest-freezer-7.0-cu-ft",
+			want: "chest freezer 7.0 cu ft",
+		},
+		{
 			name: "casing is left exactly as the shop wrote it",
 			url:  "https://shop.example.com/p/DEWALT-ATOMIC-20V-MAX-Cordless/1",
 			want: "DEWALT ATOMIC 20V MAX Cordless",
