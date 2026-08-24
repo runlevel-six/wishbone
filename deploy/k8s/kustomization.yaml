@@ -13,7 +13,15 @@ resources:
   # secret.example.yaml is documentation, not a resource. Supply the real
   # Secret out of band.
 
-# Uncomment once the extraction sidecar image is built and pushed. See
+# The extraction sidecar, on by default. It was opt-in while its image was
+# something you had to build yourself; CI publishes it now, so the note that
+# used to stand here — "uncomment once the image is built and pushed" — outlived
+# its own condition and described a base that deployed without a tier the
+# deployment it was written for had been running for weeks.
+#
+# Delete this entry to deploy without it. Nothing else changes: the tier stops
+# existing, extraction falls back to the metadata tiers and the manual form, and
+# `EXTRACTOR_SIDECAR_URL` goes unset because the patch is what sets it. See
 # extractor-sidecar.yaml and docs/how-to/enable-link-lookup.md.
-# patches:
-#   - path: extractor-sidecar.yaml
+patches:
+  - path: extractor-sidecar.yaml

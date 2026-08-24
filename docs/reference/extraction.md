@@ -414,36 +414,10 @@ with a commercial bot-detection service which scores behavior over time and not
 only the handshake, so a cold request succeeding is not a promise that a
 regular polling job would.
 
-### Where the handshake stops being enough
-
-A second department store — Akamai Bot Manager, not the chain above — refuses
-the Chrome ClientHello too, and the measurement is worth keeping so nobody
-repeats it:
-
-| Request, from the cluster's own egress | Result |
-|---|---|
-| `/robots.txt`, Go handshake | `403` |
-| `/robots.txt`, Chrome handshake | `200` |
-| A product page, Chrome handshake | `403` |
-| The same page, Chrome handshake, replayed with all 31 cookies the site had just set | `403` |
-
-The first two rows are the useful pair. They rule out the explanation that
-looks obvious from a shell — a site that will not serve its own `robots.txt`
-looks like an address block, and it is not one. `curl` gets `403` there for the
-same reason Go does, which makes `curl` the wrong instrument for this question
-and `check-url -impersonate` the right one.
-
-So the handshake gate is passed and a second gate is behind it. The product page
-answers with `_abck`, the Bot Manager cookie that is only validated by the
-telemetry its JavaScript sensor posts back. Nothing that does not run the page's
-JavaScript can hold a valid one, which is why the cookie replay changes nothing
-and why no header or fingerprint work reaches this. The escalation that would is
-the headless browser, declined on its own merits in
-[extraction trade-offs](../explanation/extraction-trade-offs.md).
-
-This is the case the slug title guess exists for, and on this retailer it is the
-whole result: the address carries the product name, so the name arrives filled
-in and labeled a guess, and the price is left for the owner.
+Impersonation clears the handshake and nothing further. Two shops refuse a Chrome
+ClientHello as flatly as they refuse Go's — see [a retailer that refuses
+everything](#a-retailer-that-refuses-everything), which is where that evidence
+lives.
 
 It is **off by default**, and deliberately:
 
@@ -567,16 +541,33 @@ Every one of these was tried against the same product address:
 | `facebookexternalhit`, `Twitterbot`, `Slackbot`, `WhatsApp`, `Discordbot` | 403, 476 bytes |
 | `Googlebot` | 403, 476 bytes |
 | A legacy internal JSON endpoint, and the bare product id | 403 |
+| `/robots.txt`, Go handshake | 403 |
+| `/robots.txt`, **Chrome handshake** | **200** |
+| The product page again, Chrome handshake, replayed carrying all 31 cookies the site had just set on its own homepage | 403 |
 
-Three things worth taking from the table:
+Four things worth taking from the table:
 
 - **It is not the egress address.** Production is a residential connection and
   the sandbox is a datacenter one; both are refused identically. A browser on
-  that same residential connection opens the page.
+  that same residential connection opens the page. The `robots.txt` pair settles
+  this on a single host without comparing two: `200` under Chrome's handshake
+  from the very address that gets `403` under Go's. An address block cannot
+  serve a file.
+- **`curl` is the wrong instrument here, and it lies in the direction of
+  panic.** It gets `403` on `robots.txt` too, for the same reason Go does — its
+  own handshake — which reads exactly like a site-wide address ban. Reach for
+  `check-url -impersonate chrome/off` on `/robots.txt` and on the product page
+  before concluding anything: that pair separates a handshake gate from a
+  blocked address, and `curl` cannot.
 - **It is not the fingerprint, or not only.** Chrome's ClientHello plus Chrome's
   full header set changes nothing, and the sidecar — a separate client with its
   own stack — is refused too. The provider is running a JS sensor, so the
-  request that succeeds is the one that executed their script.
+  request that succeeds is the one that executed their script. The product page
+  names the mechanism in its own response: it sets `_abck`, the Bot Manager
+  cookie that only the telemetry its script posts back can validate. Nothing
+  that does not run the page's JavaScript can hold a good one, which is why
+  replaying the site's own 31 cookies changes nothing — the cookie is not the
+  credential, the telemetry behind it is.
 - **The block page differs by claimed identity** (2259 bytes for a browser UA,
   476 for a crawler), which means the classification is deliberate rather than a
   blanket rule. Declared crawlers, `Googlebot` included, are refused — real

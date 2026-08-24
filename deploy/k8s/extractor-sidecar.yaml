@@ -1,13 +1,14 @@
 # Optional extraction sidecar — a strategic-merge patch, not a standalone
 # resource.
 #
-# It is opt-in because it needs a second image built and pushed
-# (deploy/sidecar/wrapper). Everything else in this directory deploys a
-# complete, working app without it; extraction simply falls back to the
-# built-in metadata tiers and the manual form.
+# Applied by default — kustomization.yaml lists it. CI builds and publishes the
+# image from deploy/sidecar/wrapper, so it is no longer something you have to
+# produce yourself; point the `REPLACE/wishbone-extractor` name at your registry
+# in your overlay's `images:` block, as with the app image.
 #
-# To enable: build and push the image, set it below, and uncomment the
-# `patches` entry in kustomization.yaml.
+# Everything else in this directory deploys a complete, working app without it,
+# so removing the `patches` entry is a supported choice: extraction falls back to
+# the built-in metadata tiers and the manual form.
 #
 # Measured worth: on large marketplaces this recovers title, price and image
 # where the metadata tiers return only a description, at a cost of roughly two

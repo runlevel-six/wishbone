@@ -144,8 +144,22 @@ Timeouts and size caps for page fetches are fixed in code, not configurable:
 - **No picture** — the retailer served a format Wishbone cannot re-encode, or
   blocked the image request. Upload one from the edit form.
 
-## What is not implemented
+## Re-checking links on a schedule
 
-Nothing re-checks links on a schedule yet. `items.link_status` is written when
-an item is created from a URL, and the owner sees a warning on a suspect item,
-but a periodic re-check job is still outstanding.
+`items.link_status` is written when an item is created from a URL, and there is
+also a periodic job that re-checks stored links so a dead one surfaces to the
+owner before somebody tries to buy it. It is **off by default** and turned on
+with `WISHBONE_LINK_CHECK_ENABLED=true`, which additionally requires
+`WISHBONE_FETCH_ENABLED` — without it the job logs a warning and does not start.
+
+The defaults sweep 20 items every 24 hours, 30 seconds apart, skipping anything
+checked in the last 7 days. Those knobs, and the per-host cap that is
+deliberately *not* a knob, are in
+[configuration](../reference/configuration.md#link-health). Read that before
+raising the batch: the cap exists because the interactive lookup shares this
+egress address, and a sweep dense enough to annoy a bot filter is paid for by
+whoever pastes the next link on their phone.
+
+This project's own deployment runs it at the defaults, for the same reason the
+impersonation note above is recorded: a switch flipped only in a deployment
+overlay is invisible to anyone reading the tree.
