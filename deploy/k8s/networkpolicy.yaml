@@ -70,7 +70,18 @@ spec:
         - protocol: TCP
           port: 443
 ---
-# Ingress: only the ingress controller may reach the app.
+# Ingress: only named namespaces may reach the app.
+#
+# One entry is sketched below, but this is a LIST and most deployments need
+# more than the ingress controller in it — anything that reaches the pod
+# directly rather than through the ingress needs its own entry. A dashboard
+# probing the app for health is the usual second one.
+#
+# Overlay this by replacing the whole `from` array, not by rewriting entry 0's
+# namespace: an index patch against a list that has grown drops whatever else
+# was in it, and the failure is silent. Cilium drops rather than rejects, so a
+# missing entry presents as a host that completes its TLS handshake and then
+# hangs, with no error logged by either the controller or the app.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
