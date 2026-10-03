@@ -588,6 +588,15 @@ wording, which now says plainly that some shops refuse every time.
 - Decoded and **re-encoded** with the standard library rather than stored
   verbatim, which strips EXIF and neutralizes polyglot files. JPEG, PNG, GIF
   and WebP decode; PNG in stays PNG, everything else becomes JPEG.
+- A JPEG's EXIF orientation is applied before re-encoding, so a phone photo is
+  stored the right way up.
+- Refused before decoding when the header claims more than 25 megapixels
+  (`imgstore.MaxPixels`), which bounds memory whatever the file size.
+- Uploads share the 5 MiB cap. An upload that cannot be used is reported to
+  the owner in the flash after saving, and the page's picture, if any, is
+  saved instead. In the browser, `app.js` redraws a photo that is over the cap
+  (or in a format only the browser can read, such as HEIC) at 2048 px on the
+  long edge before sending it; a file that already fits goes untouched.
 - Stored content-addressed at `{sha[0:2]}/{sha}.{ext}`, deduplicated by hash,
   with a long-edge-1024 derivative alongside the original.
 - Never hotlinked. Links rot, and hotlinking would leak every viewer's IP

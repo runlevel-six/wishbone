@@ -243,13 +243,16 @@ templ ItemFormBody(p Page, f ItemFormData) {
 				</label>
 			</div>
 		}
-		<label>
-			Picture
-			<input type="file" name="image" accept="image/*"/>
+		<fieldset class="picture">
+			<legend>Picture</legend>
+			<div class="row">
+				@pictureInput("Take a photo", "camera-only", true)
+				@pictureInput("Choose a picture", "", false)
+			</div>
 			if f.ImageURL != "" {
-				<span class="hint">A picture from the page will be saved with the item.</span>
+				<span class="hint">A picture from the page will be saved with the item, unless you pick one.</span>
 			}
-		</label>
+		</fieldset>
 		if f.ImageURL != "" {
 			<input type="hidden" name="image_url" value={ f.ImageURL }/>
 		}
@@ -267,6 +270,26 @@ templ ItemFormBody(p Page, f ItemFormData) {
 			<a class="button link" href={ templ.SafeURL("/lists/" + f.ListID) }>Cancel</a>
 		</div>
 	</form>
+}
+
+// pictureInput is one way to pick the item's picture. Both inputs share the
+// name "image" and the handler keeps whichever one was used.
+//
+// The camera one sets capture, which on a phone opens the camera straight away
+// instead of a menu that, on some Androids, does not offer it at all. A desktop
+// ignores capture and would show a plain file chooser under a label promising a
+// camera, so CSS shows that input only on touch screens. data-shrink hands
+// both to app.js, which makes a large photo small and upright on the phone
+// before it is sent; without JavaScript the file goes as it is.
+templ pictureInput(label, class string, camera bool) {
+	<label class={ "picture-pick", class }>
+		{ label }
+		if camera {
+			<input type="file" name="image" accept="image/*" capture="environment" data-shrink={ maxImageBytes() }/>
+		} else {
+			<input type="file" name="image" accept="image/*" data-shrink={ maxImageBytes() }/>
+		}
+	</label>
 }
 
 // foundSummary shows a held-back extraction without applying it.

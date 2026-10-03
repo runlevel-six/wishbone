@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"strings"
@@ -431,11 +433,19 @@ func (s *Server) handleCreateItem(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.attachImage(r, it.ID, in)
+	problem := s.attachImage(r, it.ID, in)
 
-	if dups, err := s.st.DuplicateItems(ctx, model.Deref(in.URL), u.ID, it.ID); err == nil && len(dups) > 0 {
+	dups, err := s.st.DuplicateItems(ctx, model.Deref(in.URL), u.ID, it.ID)
+	duplicate := err == nil && len(dups) > 0
+	switch {
+	case problem != "" && duplicate:
+		s.flash(w, templates.FlashWarn, "Added. "+problem+
+			" Heads up too: that link is already on another list you can see.")
+	case problem != "":
+		s.flash(w, templates.FlashWarn, "Added. "+problem)
+	case duplicate:
 		s.flash(w, templates.FlashInfo, "Added. Heads up: that link is already on another list you can see.")
-	} else {
+	default:
 		s.flash(w, templates.FlashOK, "Added.")
 	}
 	s.redirect(w, r, "/lists/"+l.ID)
@@ -490,9 +500,11 @@ func (s *Server) handleUpdateItem(w http.ResponseWriter, r *http.Request) {
 	if r.PostFormValue("remove_image") == "1" {
 		s.removeImages(ctx, it.ID)
 	}
-	s.attachImage(r, it.ID, in)
-
-	s.flash(w, templates.FlashOK, "Saved.")
+	if problem := s.attachImage(r, it.ID, in); problem != "" {
+		s.flash(w, templates.FlashWarn, "Saved. "+problem)
+	} else {
+		s.flash(w, templates.FlashOK, "Saved.")
+	}
 	s.redirect(w, r, "/lists/"+l.ID)
 }
 
@@ -789,25 +801,27 @@ func (s *Server) ownedItem(w http.ResponseWriter, r *http.Request) (*model.Item,
 }
 
 // attachImage stores an uploaded file, or fetches the extractor's image.
-// Failures are logged, never fatal: an item without a picture is fine.
-func (s *Server) attachImage(r *http.Request, itemID string, in itemInput) {
+// Failures never stop the save: an item without a picture is fine. A picture
+// the owner chose themselves and lost is not, though, so an upload that could
+// not be used returns a sentence saying why, for the flash, and the page's
+// picture is tried in its place. That one failing is only logged; nobody
+// picked it by hand.
+func (s *Server) attachImage(r *http.Request, itemID string, in itemInput) (problem string) {
 	ctx := r.Context()
-	if file, header, err := r.FormFile("image"); err == nil {
-		defer file.Close()
-		if header.Size > 0 {
-			raw, err := io.ReadAll(io.LimitReader(file, imgstore.MaxImageBytes))
-			if err != nil {
-				s.log.Warn("read uploaded image", slog.Any("err", err))
-			} else if stored, err := s.img.Store(raw); err != nil {
-				s.log.Warn("store uploaded image", slog.Any("err", err))
-			} else {
+	if file := uploadedImage(r); file != nil {
+		raw, err := readUpload(file)
+		if err == nil {
+			var stored *imgstore.Stored
+			if stored, err = s.img.Store(raw); err == nil {
 				s.saveImageRow(ctx, itemID, stored)
-				return
+				return ""
 			}
 		}
+		s.log.Warn("uploaded image not used", slog.Int64("bytes", file.Size), slog.Any("err", err))
+		problem = uploadProblem(err)
 	}
 	if in.ImageURL == "" || !s.ex.Enabled() {
-		return
+		return problem
 	}
 	// Detach from the request so a slow retailer does not block the redirect
 	// past the handler's own deadline.
@@ -816,9 +830,66 @@ func (s *Server) attachImage(r *http.Request, itemID string, in itemInput) {
 	stored, err := s.img.FetchAndStore(fetchCtx, in.ImageURL)
 	if err != nil {
 		s.log.Info("image fetch failed", slog.String("url", in.ImageURL), slog.Any("err", err))
-		return
+		return problem
 	}
 	s.saveImageRow(fetchCtx, itemID, stored)
+	return problem
+}
+
+// errUploadTooLarge is an upload over imgstore.MaxImageBytes.
+var errUploadTooLarge = errors.New("upload exceeds the image size limit")
+
+// uploadedImage returns the first non-empty file sent as "image". The form has
+// two inputs by that name — one that opens the camera, one that opens the
+// files — and whichever was left alone arrives as an empty part, possibly
+// first.
+func uploadedImage(r *http.Request) *multipart.FileHeader {
+	if r.MultipartForm == nil {
+		if err := r.ParseMultipartForm(8 << 20); err != nil {
+			return nil
+		}
+	}
+	for _, fh := range r.MultipartForm.File["image"] {
+		if fh.Size > 0 {
+			return fh
+		}
+	}
+	return nil
+}
+
+// readUpload reads one byte past the limit, so an oversized file is reported
+// as too large instead of being cut short and then failing to decode as
+// something that sounds like corruption.
+func readUpload(fh *multipart.FileHeader) ([]byte, error) {
+	f, err := fh.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	raw, err := io.ReadAll(io.LimitReader(f, imgstore.MaxImageBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(raw) > imgstore.MaxImageBytes {
+		return nil, errUploadTooLarge
+	}
+	return raw, nil
+}
+
+// uploadProblem words a failed upload for the person who chose it. Every
+// sentence ends by saying what to do next.
+func uploadProblem(err error) string {
+	switch {
+	case errors.Is(err, errUploadTooLarge):
+		return fmt.Sprintf("Your picture was too big to save (the limit is %d MB). "+
+			"A screenshot of it, or a smaller copy, will fit.", imgstore.MaxImageBytes>>20)
+	case errors.Is(err, imgstore.ErrTooManyPixels):
+		return "Your picture was too big to save. A screenshot of it, or a smaller copy, will fit."
+	case errors.Is(err, imgstore.ErrUnsupportedImage):
+		return "Your picture could not be read, so it was not saved. JPEG, PNG, WebP and GIF all work."
+	default:
+		return "Your picture could not be saved. Try choosing it again."
+	}
 }
 
 func (s *Server) saveImageRow(ctx context.Context, itemID string, stored *imgstore.Stored) {

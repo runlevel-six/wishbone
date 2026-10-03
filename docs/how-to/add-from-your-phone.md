@@ -69,6 +69,21 @@ usually you check the title, maybe fix the price, and save. If the shop
 publishes nothing readable, type what you know — a hand-entered item is not a
 second-class item.
 
+## Add a picture with the camera
+
+Something with no link — a handmade thing, a shop shelf, the exact mug a friend
+has — can still have a picture. On a phone or tablet the item form shows two
+buttons under **Picture**:
+
+- **Take a photo** opens the camera directly.
+- **Choose a picture** opens the photo library or files.
+
+A desktop shows only the second; a computer's file chooser is what it would
+open anyway. A photo over the 5 MB limit is made smaller on the phone before it
+is sent, and every photo is stored the right way up. If a picture still cannot
+be used, the item is saved without it and the message at the top of the list
+says why.
+
 ## What is deliberately not cached
 
 The installed app registers a service worker, which is what makes it

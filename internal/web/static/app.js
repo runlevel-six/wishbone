@@ -49,6 +49,77 @@
 		if (form) { form.requestSubmit ? form.requestSubmit() : form.submit(); }
 	});
 
+	// Make a picture fit before it is sent. The server refuses a file over its
+	// limit (data-shrink carries it), and phone photos often are over it. So a
+	// photo that is too big, or in a format the server cannot read but this
+	// browser can (HEIC on a Mac), is redrawn here at a sensible size and sent
+	// as JPEG — PNG stays PNG while it fits, to keep a cutout's transparency.
+	//
+	// Anything that already fits is sent untouched: the server reads its EXIF
+	// orientation and turns it upright itself, so there is no reason to trust
+	// each browser's handling of that here. The redraw is through an <img>,
+	// which every current browser draws the right way up, and through a data:
+	// URL because the CSP allows those and not blob: URLs.
+	//
+	// Any failure leaves the original in place; the server then explains what
+	// was wrong with it.
+	var SHRINK_EDGE = 2048;
+	var READABLE = /^image\/(jpeg|png|webp|gif)$/;
+
+	document.addEventListener("change", function (ev) {
+		var input = ev.target;
+		if (!input.matches("input[type=file][data-shrink]")) { return; }
+		var form = input.form;
+		// Two inputs share the name "image"; keep only the one just used.
+		if (form) {
+			form.querySelectorAll("input[type=file][data-shrink]").forEach(function (other) {
+				if (other !== input) { other.value = ""; }
+			});
+		}
+		var file = input.files && input.files[0];
+		var limit = parseInt(input.getAttribute("data-shrink"), 10) || 0;
+		if (!file || (file.size <= limit && READABLE.test(file.type))) { return; }
+		if (typeof DataTransfer !== "function" || !HTMLCanvasElement.prototype.toBlob) { return; }
+
+		var buttons = form ? form.querySelectorAll("button[type=submit]") : [];
+		buttons.forEach(function (b) { b.disabled = true; });
+		var done = function () { buttons.forEach(function (b) { b.disabled = false; }); };
+
+		var reader = new FileReader();
+		reader.onerror = done;
+		reader.onload = function () {
+			var img = new Image();
+			img.onerror = done;
+			img.onload = function () {
+				var w = img.naturalWidth, h = img.naturalHeight;
+				var scale = Math.min(1, SHRINK_EDGE / Math.max(w, h));
+				var canvas = document.createElement("canvas");
+				canvas.width = Math.max(1, Math.round(w * scale));
+				canvas.height = Math.max(1, Math.round(h * scale));
+				canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+
+				var keepPNG = /^image\/(png|gif)$/.test(file.type);
+				var encode = function (type) {
+					canvas.toBlob(function (blob) {
+						if (!blob) { done(); return; }
+						if (blob.size > limit && type === "image/png") { encode("image/jpeg"); return; }
+						if (blob.size <= limit) {
+							var ext = type === "image/png" ? ".png" : ".jpg";
+							var name = (file.name || "picture").replace(/\.[^.]*$/, "") + ext;
+							var dt = new DataTransfer();
+							dt.items.add(new File([blob], name, { type: type }));
+							input.files = dt.files;
+						}
+						done();
+					}, type, 0.85);
+				};
+				encode(keepPNG ? "image/png" : "image/jpeg");
+			};
+			img.src = reader.result;
+		};
+		reader.readAsDataURL(file);
+	});
+
 	// Select the invite link on focus so it is easy to copy.
 	document.addEventListener("focusin", function (ev) {
 		if (ev.target.matches("input[data-select-on-focus]")) { ev.target.select(); }

@@ -35,7 +35,17 @@ const MaxImageBytes = 5 << 20 // 5 MiB
 // DisplayLongEdge is the long edge of the generated display derivative.
 const DisplayLongEdge = 1024
 
-var ErrUnsupportedImage = errors.New("imgstore: unsupported or corrupt image")
+// MaxPixels caps an image's area before it is decoded. File size says little
+// about memory: a 5 MiB JPEG can claim tens of thousands of pixels a side, and
+// decoding plus turning one upright costs about 11 bytes a pixel. 25 MP admits
+// any phone's default output and a 24 MP camera, and stays well inside the
+// container's memory limit.
+const MaxPixels = 25_000_000
+
+var (
+	ErrUnsupportedImage = errors.New("imgstore: unsupported or corrupt image")
+	ErrTooManyPixels    = errors.New("imgstore: image has too many pixels")
+)
 
 // Stored describes a blob that is now on disk.
 type Stored struct {
@@ -79,10 +89,23 @@ func (s *Store) FetchAndStore(ctx context.Context, rawURL string) (*Stored, erro
 // Store re-encodes raw image bytes and writes the original plus one display
 // derivative. The returned SHA is of the re-encoded canonical bytes, so two
 // uploads of the same picture dedupe even if their containers differed.
+//
+// A JPEG's EXIF orientation is applied first, since re-encoding drops the tag
+// that says which way up the picture goes.
 func (s *Store) Store(raw []byte) (*Stored, error) {
+	cfg, _, err := image.DecodeConfig(bytes.NewReader(raw))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrUnsupportedImage, err)
+	}
+	if int64(cfg.Width)*int64(cfg.Height) > MaxPixels {
+		return nil, fmt.Errorf("%w: %dx%d", ErrTooManyPixels, cfg.Width, cfg.Height)
+	}
 	img, format, err := image.Decode(bytes.NewReader(raw))
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrUnsupportedImage, err)
+	}
+	if format == "jpeg" {
+		img = applyOrientation(img, jpegOrientation(raw))
 	}
 
 	canonical, mime, ext, err := encode(img, format)

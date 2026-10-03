@@ -185,6 +185,8 @@ func TestHelpNamesTheControlsAsTheyAreLabeled(t *testing.T) {
 		{"Start from a link", "/lists/" + h.list.ID + "/items/new", h.ownerSession},
 		{"Look it up", "/lists/" + h.list.ID + "/items/new", h.ownerSession},
 		{"Notes for whoever buys it", "/lists/" + h.list.ID + "/items/new", h.ownerSession},
+		{"Take a photo", "/lists/" + h.list.ID + "/items/new", h.ownerSession},
+		{"Choose a picture", "/lists/" + h.list.ID + "/items/new", h.ownerSession},
 		{"Move to", "/lists/" + h.list.ID, h.ownerSession},
 		{"New list", "/", h.ownerSession},
 		{"Everyone in the family", "/lists/" + h.list.ID, h.ownerSession},

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"wishbone/internal/imgstore"
 	"wishbone/internal/model"
 	"wishbone/internal/view"
 )
@@ -340,3 +341,7 @@ func otherErrors(errs map[string]string) []string {
 	}
 	return out
 }
+
+// maxImageBytes is the upload limit, for app.js: it shrinks a picture until it
+// fits, and leaves alone a file that already does and that it cannot improve.
+func maxImageBytes() string { return strconv.Itoa(imgstore.MaxImageBytes) }

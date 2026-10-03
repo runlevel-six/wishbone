@@ -111,7 +111,7 @@ func Help(p Page, d HelpData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p>The fields worth knowing about:</p><ul><li><strong>Notes for whoever buys it</strong> — size, color, which edition, which shelf it has to fit on. This is the field that stops a wrong guess, and it is the one people read.</li><li><strong>How many?</strong> — leave it at 1 unless you genuinely want several. Set it to 4 and four different people can each say they are getting one.</li><li><strong>Category</strong> — picking one adds a few fields that suit it, like a size for clothing. All optional.</li><li><strong>Picture</strong> — a picture from the page is saved automatically when there is one. Uploading your own overrides it, which is the easiest fix when the shop's picture shows the wrong color. On an item you have already saved, uploading a new one replaces what is shown, and <strong>Remove this picture</strong> leaves it with none.</li></ul><p>Nothing is final. <strong>Edit</strong> on any of your own items reopens the same form.</p></section>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p>The fields worth knowing about:</p><ul><li><strong>Notes for whoever buys it</strong> — size, color, which edition, which shelf it has to fit on. This is the field that stops a wrong guess, and it is the one people read.</li><li><strong>How many?</strong> — leave it at 1 unless you genuinely want several. Set it to 4 and four different people can each say they are getting one.</li><li><strong>Category</strong> — picking one adds a few fields that suit it, like a size for clothing. All optional.</li><li><strong>Picture</strong> — a picture from the page is saved automatically when there is one. Picking your own overrides it, which is the easiest fix when the shop's picture shows the wrong color. <strong>Choose a picture</strong> picks a file or a photo you already have; on a phone or tablet, <strong>Take a photo</strong> opens the camera, which suits something with no link at all. A large photo is made smaller before it is sent. On an item you have already saved, picking a new one replaces what is shown, and <strong>Remove this picture</strong> leaves it with none.</li></ul><p>Nothing is final. <strong>Edit</strong> on any of your own items reopens the same form.</p></section>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -128,7 +128,7 @@ func Help(p Page, d HelpData) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(ProductName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/help.templ`, Line: 258, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/help.templ`, Line: 260, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -141,7 +141,7 @@ func Help(p Page, d HelpData) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(d.ShareTargetURL)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/help.templ`, Line: 280, Col: 50}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/web/templates/help.templ`, Line: 282, Col: 50}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {

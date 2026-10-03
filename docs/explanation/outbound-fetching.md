@@ -96,7 +96,10 @@ second is a privacy property rather than an availability one:
 
 Stored images are re-encoded rather than saved as received, which strips EXIF
 (location data in a phone photo) and destroys polyglot files that are
-simultaneously a valid image and a valid script.
+simultaneously a valid image and a valid script. The one EXIF field that is
+read first is the orientation: phones record which way up the camera was held
+there instead of turning the pixels, so a portrait photo would otherwise be
+stored on its side with nothing left to correct it.
 
 ## Testing it
 

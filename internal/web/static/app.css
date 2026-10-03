@@ -597,3 +597,14 @@ dialog::backdrop { background: rgba(20, 18, 15, .45); }
 	.item-body { flex-direction: column; }
 	.thumb { width: 100%; height: 160px; }
 }
+
+/* The two ways to pick a picture. The camera one is for touch screens only: a
+   desktop ignores capture and would open a file chooser under a label that
+   promised a camera. */
+.picture .row { align-items: flex-start; }
+.picture-pick { flex: 1; min-width: 12rem; }
+.picture-pick input { display: block; margin-top: .3rem; max-width: 100%; font-weight: 400; }
+.camera-only { display: none; }
+@media (hover: none) and (pointer: coarse) {
+	.camera-only { display: block; }
+}
